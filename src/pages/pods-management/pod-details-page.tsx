@@ -7,9 +7,9 @@ import { usePodQuery, type PodQueryError } from "@/hooks/queries/use-pods";
 import { PodStatusBadge } from "./components/pod-status-badge";
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("en-NG", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "NGN",
+    currency: "USD",
     minimumFractionDigits: 0,
   }).format(value);
 

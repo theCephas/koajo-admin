@@ -24,9 +24,9 @@ const monthFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
 });
 
-const currencyFormatter = new Intl.NumberFormat("en-NG", {
+const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "NGN",
+  currency: "USD",
   maximumFractionDigits: 2,
 });
 

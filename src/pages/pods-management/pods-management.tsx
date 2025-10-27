@@ -13,9 +13,9 @@ import { PodStatusBadge } from "./components/pod-status-badge";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("en-NG", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "NGN",
+    currency: "USD",
     minimumFractionDigits: 0,
   }).format(value);
 

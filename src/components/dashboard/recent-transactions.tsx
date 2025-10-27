@@ -24,9 +24,9 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-const currencyFormatter = new Intl.NumberFormat("en-NG", {
+const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "NGN",
+  currency: "USD",
   maximumFractionDigits: 2,
 });
 

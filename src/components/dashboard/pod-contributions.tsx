@@ -8,9 +8,9 @@ interface PodContributionsProps {
 
 const colors = ["#FF8C42", "#7C3AED", "#5B8DEF", "#2DD4BF", "#F97316"];
 
-const currencyFormatter = new Intl.NumberFormat("en-NG", {
+const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "NGN",
+  currency: "USD",
   maximumFractionDigits: 2,
 });
 

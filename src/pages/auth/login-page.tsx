@@ -1,17 +1,81 @@
-import { useState, type FormEvent } from "react";
+/* eslint-disable @typescript-eslint/no-misused-promises */
+import { useCallback, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import KoajoIcon from "../../../public/koajo.png";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useLoginMutation } from "@/hooks/queries/use-login";
+import { useAuthStore } from "@/stores/auth-store";
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-    setTimeout(() => setIsSubmitting(false), 1200);
-  };
+  // Subscribe to store fields separately to avoid new object identity each render
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const { mutateAsync, isPending } = useLoginMutation();
+
+  const onSubmit = useCallback(
+    async (values: LoginFormValues) => {
+      const toastId = toast.loading("Signing you in...");
+      try {
+        const response = await mutateAsync(values);
+        // single store update, no loops
+        setAuth(response);
+        toast.success("Welcome back to Koajo 👋", {
+          id: toastId,
+          duration: 3000,
+        });
+      } catch (error) {
+        const message =
+          (error as { response?: { data?: { message?: string } } })?.response
+            ?.data?.message ?? "Unable to sign in. Please try again.";
+        toast.error(message, { id: toastId, duration: 4000 });
+      }
+    },
+    [mutateAsync, setAuth],
+  );
+
+  // Guard the redirect to only run on false -> true transitions (prevents StrictMode double-invoke loops)
+  const prevAuthRef = useRef(isAuthenticated);
+  useEffect(() => {
+    if (!prevAuthRef.current && isAuthenticated) {
+      // defer to next tick to avoid synchronous update during mount effects
+      const id = setTimeout(() => navigate("/", { replace: true }), 0);
+      return () => clearTimeout(id);
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, navigate]);
 
   return (
     <div
@@ -117,38 +181,61 @@ export function LoginPage() {
             </div> */}
           </div>
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="text-sm font-medium block mb-2" htmlFor="email">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                required
-                placeholder="you@koajo.com"
+          <Form {...form}>
+            <form
+              className="mt-6 space-y-4"
+              onSubmit={form.handleSubmit(onSubmit)}
+            >
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="you@koajo.com"
+                        autoComplete="email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div>
-              <label
-                className="text-sm font-medium block mb-2"
-                htmlFor="password"
-              >
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                required
-                placeholder="••••••••"
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="password"
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <Button className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Continue"}
-            </Button>
-          </form>
+              <Button className="w-full" type="submit" disabled={isPending}>
+                {isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Signing in...
+                  </span>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </form>
+          </Form>
 
           {/* <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>

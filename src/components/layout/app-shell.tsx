@@ -6,6 +6,8 @@ import {
   HiOutlineCollection,
   HiOutlineDocumentText,
   HiOutlineBell,
+  HiOutlineCube,
+  HiOutlineTemplate,
   // HiChevronRight,
 } from "react-icons/hi";
 
@@ -26,6 +28,16 @@ const navigation = [
     to: "/users-management",
     icon: HiOutlineUser,
     // hasSubmenu: true,
+  },
+  {
+    label: "Pods Management",
+    to: "/pods-management",
+    icon: HiOutlineCube,
+  },
+  {
+    label: "Pod Plans",
+    to: "/pod-plans-management",
+    icon: HiOutlineTemplate,
   },
   {
     label: "Groups Management",

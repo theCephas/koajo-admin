@@ -1,32 +1,58 @@
 import {
   Bar,
   BarChart,
-  CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
   Line,
   LineChart,
+  CartesianGrid,
 } from "recharts";
 
-const barData = [
-  { name: "Jan", amt: 6800 },
-  { name: "Feb", amt: 9200 },
-  { name: "Mar", amt: 7800 },
-];
+import type {
+  DashboardIncomeAnalysis,
+  DashboardPayoutAnalysis,
+} from "@/services/api";
 
-const lineData = [
-  { name: "Mon", v: 1200 },
-  { name: "Tue", v: 3100 },
-  { name: "Wed", v: 1800 },
-  { name: "Thu", v: 2400 },
-  { name: "Fri", v: 2100 },
-  { name: "Sat", v: 3900 },
-  { name: "Sun", v: 2000 },
-];
+interface IncomeAnalysisProps {
+  incomeAnalysis: DashboardIncomeAnalysis;
+  payoutAnalysis: DashboardPayoutAnalysis;
+}
 
-export function IncomeAnalysis() {
+const monthFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+});
+
+const currencyFormatter = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
+
+const percentFormatter = (value: number) =>
+  `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+
+const parseMonthLabel = (month: string) => {
+  const [year, monthIndex] = month.split("-");
+  const date = new Date(Number(year), Number(monthIndex) - 1);
+  return monthFormatter.format(date);
+};
+
+export function IncomeAnalysis({
+  incomeAnalysis,
+  payoutAnalysis,
+}: IncomeAnalysisProps) {
+  const incomeChartData = incomeAnalysis.monthlyTotals.map((item) => ({
+    name: parseMonthLabel(item.month),
+    amount: Number(item.total),
+  }));
+
+  const payoutChartData = payoutAnalysis.monthlyTotals.map((item) => ({
+    name: parseMonthLabel(item.month),
+    amount: Number(item.total),
+  }));
+
   return (
     <div className="space-y-4 bg-white rounded-[16px] p-5">
       <div className="">
@@ -37,18 +63,26 @@ export function IncomeAnalysis() {
         <div className="mt-3 items-center flex justify-between">
           <div className="space-y-3">
             <div className="flex gap-4 items-center">
-              <p className="text-3xl font-bold">$8,527,224</p>
-              <p className="mt-1 text-xs bg-emerald-200/30 px-2 py-1 rounded-sm text-emerald-600">
-                +3.1%
+              <p className="text-3xl font-bold">
+                {currencyFormatter.format(Number(incomeAnalysis.totalIncoming))}
+              </p>
+              <p
+                className={`mt-1 text-xs px-2 py-1 rounded-sm ${
+                  incomeAnalysis.percentageChange >= 0
+                    ? "bg-emerald-200/30 text-emerald-600"
+                    : "bg-rose-200/30 text-rose-600"
+                }`}
+              >
+                {percentFormatter(incomeAnalysis.percentageChange)}
               </p>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Expense increased by $2,172 This Month
+              Incoming payments across all pods over the selected period.
             </p>
           </div>
           <div className="h-32 w-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData}>
+              <BarChart data={incomeChartData}>
                 <CartesianGrid vertical={false} stroke="#F1F5F9" />
                 <XAxis
                   dataKey="name"
@@ -58,7 +92,7 @@ export function IncomeAnalysis() {
                 />
                 <YAxis hide />
                 <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-                <Bar dataKey="amt" radius={[6, 6, 0, 0]} fill="#FF8C42" />
+                <Bar dataKey="amount" radius={[6, 6, 0, 0]} fill="#FF8C42" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -73,24 +107,32 @@ export function IncomeAnalysis() {
         <div className="mt-3 items-center flex justify-between">
           <div className="space-y-3">
             <div className="flex gap-4 items-center">
-              <p className="text-3xl font-bold">$2,056,123</p>
-              <p className="mt-1 text-xs bg-rose-200/30 px-2 py-1 rounded-sm text-rose-600">
-                -2.1%
+              <p className="text-3xl font-bold">
+                {currencyFormatter.format(Number(payoutAnalysis.totalPayouts))}
+              </p>
+              <p
+                className={`mt-1 text-xs px-2 py-1 rounded-sm ${
+                  payoutAnalysis.percentageChange >= 0
+                    ? "bg-emerald-200/30 text-emerald-600"
+                    : "bg-rose-200/30 text-rose-600"
+                }`}
+              >
+                {percentFormatter(payoutAnalysis.percentageChange)}
               </p>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Expense increased by $1,456 This Month
+              Outgoing payouts completed for contributors.
             </p>
           </div>
           <div className="h-28 w-56">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={lineData}>
+              <LineChart data={payoutChartData}>
                 <XAxis dataKey="name" hide />
                 <YAxis hide />
                 <Tooltip />
                 <Line
                   type="monotone"
-                  dataKey="v"
+                  dataKey="amount"
                   stroke="#5B8DEF"
                   strokeWidth={3}
                   dot={false}

@@ -17,11 +17,19 @@ import ContactsPage from "@/pages/groups-management/contacts-page";
 import Notifications from "@/pages/notifications/notifications";
 import ContributionsAndAllocations from "@/pages/contributions-and-allocations/contributions-and-allocations";
 import CADetailsPage from "@/pages/contributions-and-allocations/ca-details-page";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import PodsManagementPage from "@/pages/pods-management/pods-management";
+import PodDetailsPage from "@/pages/pods-management/pod-details-page";
+import PodPlansManagementPage from "@/pages/pod-plans-management/pod-plans-management";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootLayout />,
+    element: (
+      <ProtectedRoute>
+        <RootLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -46,6 +54,18 @@ export const router = createBrowserRouter([
       {
         path: "users-management/:id",
         element: <UserManagementDetailsPage />,
+      },
+      {
+        path: "pods-management",
+        element: <PodsManagementPage />,
+      },
+      {
+        path: "pods-management/:id",
+        element: <PodDetailsPage />,
+      },
+      {
+        path: "pod-plans-management",
+        element: <PodPlansManagementPage />,
       },
       {
         path: "groups-management",

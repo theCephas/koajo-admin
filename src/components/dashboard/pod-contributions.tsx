@@ -1,14 +1,38 @@
 import { Pie, PieChart, ResponsiveContainer, Cell } from "recharts";
 
-const data = [
-  { name: "$100 Pod", value: 401, color: "#FF8C42" },
-  { name: "$200 Pod", value: 250, color: "#7C3AED" },
-  { name: "$500 Pod", value: 61, color: "#5B8DEF" },
-  { name: "$1000 Pod", value: 192, color: "#2DD4BF" },
-];
+import type { DashboardPodContribution } from "@/services/api";
 
-export function PodContributions() {
-  //   const total = data.reduce((a, b) => a + b.value, 0);
+interface PodContributionsProps {
+  podContributions: DashboardPodContribution[];
+}
+
+const colors = ["#FF8C42", "#7C3AED", "#5B8DEF", "#2DD4BF", "#F97316"];
+
+const currencyFormatter = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
+
+export function PodContributions({ podContributions }: PodContributionsProps) {
+  const data = podContributions.map((contribution, index) => ({
+    name: contribution.planCode,
+    value: Number(contribution.totalContributed),
+    color: colors[index % colors.length],
+  }));
+
+  const total = data.reduce((acc, cur) => acc + cur.value, 0);
+
+  if (data.length === 0) {
+    return (
+      <div className="rounded-[16px] bg-card p-5 text-center">
+        <h3 className="text-base font-semibold">Pod contributions</h3>
+        <p className="mt-4 text-sm text-muted-foreground">
+          No contribution data available yet.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-[16px] bg-card p-5">
@@ -28,16 +52,20 @@ export function PodContributions() {
                 outerRadius={85}
                 strokeWidth={6}
               >
-                {data.map((d) => (
-                  <Cell key={d.name} fill={d.color} />
+                {data.map((d, index) => (
+                  <Cell key={d.name} fill={colors[index % colors.length]} />
                 ))}
               </Pie>
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
             <div className="text-center">
-              <p className="text-3xl font-semibold">100%</p>
-              <p className="text-xs text-muted-foreground">Data Recorded</p>
+              <p className="text-3xl font-semibold">
+                {currencyFormatter.format(total)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Total Contributions
+              </p>
             </div>
           </div>
         </div>
@@ -53,7 +81,7 @@ export function PodContributions() {
                 <span className="text-sm text-muted-foreground">{d.name}</span>
               </div>
               <span className="text-sm font-medium">
-                ${Intl.NumberFormat().format(d.value * 1000)}
+                {currencyFormatter.format(d.value)}
               </span>
             </div>
           ))}

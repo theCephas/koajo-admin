@@ -1,3 +1,589 @@
+import React, { useMemo } from "react";
+import { Link, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Loader2,
+  Mail,
+  Phone,
+  Medal,
+  Target,
+  Trophy,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  AccountAvatar,
+  getAccountDisplayName,
+} from "./components/account-avatar";
+import { AccountStatusPill } from "./components/account-status-pill";
+import {
+  useAccountAchievementsQuery,
+  useAccountQuery,
+  useUpdateAccountNotificationsMutation,
+  type AccountAchievementsQueryError,
+  type AccountQueryError,
+  type UpdateAccountNotificationsError,
+} from "@/hooks/queries/use-accounts";
+import type { AccountAchievement, AccountDetails } from "@/services/api";
+
+const formatFullDateTime = (isoString?: string | null) => {
+  if (!isoString) return "—";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const formatShortDate = (isoString?: string | null) => {
+  if (!isoString) return "—";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+};
+
+const InfoRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-1 rounded-xl border border-[#F0F2F7] bg-[#FCFCFD] p-4">
+    <span className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+      {label}
+    </span>
+    <span className="text-sm text-[#111827]">{value ?? "—"}</span>
+  </div>
+);
+
+const NotificationRow = ({
+  id,
+  label,
+  description,
+  checked,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (nextValue: boolean) => void;
+}) => (
+  <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#E5E7EB] p-4 transition-colors hover:border-[#D1D5DB]">
+    <div className="space-y-1">
+      <label
+        htmlFor={id}
+        className="text-sm font-semibold text-[#111827] leading-none"
+      >
+        {label}
+      </label>
+      <p className="text-xs text-[#6B7280]">{description}</p>
+    </div>
+    <Switch
+      id={id}
+      checked={checked}
+      onCheckedChange={onChange}
+      disabled={disabled}
+    />
+  </div>
+);
+
+const NotificationError = ({
+  error,
+}: {
+  error: UpdateAccountNotificationsError;
+}) => {
+  const message =
+    error.response?.data?.message ??
+    error.message ??
+    "Unable to update notifications.";
+
+  return (
+    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+      {message}
+    </div>
+  );
+};
+
+const AchievementCard = ({
+  achievement,
+  status,
+}: {
+  achievement: AccountAchievement;
+  status: "earned" | "pending";
+}) => {
+  const metaLabel =
+    status === "earned"
+      ? "Earned"
+      : typeof achievement.remaining === "number"
+        ? `${achievement.remaining} remaining`
+        : "Pending";
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-[#111827]">
+            {achievement.name}
+          </h4>
+          <p className="text-xs text-[#6B7280]">{achievement.description}</p>
+        </div>
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${status === "earned" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-700"}`}
+        >
+          {metaLabel}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs text-[#6B7280]">
+        {typeof achievement.progress === "number" && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-2 py-0.5">
+            <Target className="h-3.5 w-3.5 text-[#6B7280]" />
+            Progress: {achievement.progress ?? 0}
+          </span>
+        )}
+        {achievement.earnedAt && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-2 py-0.5">
+            <Trophy className="h-3.5 w-3.5 text-[#6B7280]" />
+            Earned: {formatShortDate(achievement.earnedAt)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const AchievementsSection = ({
+  data,
+  isLoading,
+  error,
+}: {
+  data:
+    | {
+        totalEarned: number;
+        totalAvailable: number;
+        earned: AccountAchievement[];
+        pending: AccountAchievement[];
+      }
+    | undefined;
+  isLoading: boolean;
+  error: AccountAchievementsQueryError | null;
+}) => {
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading achievements…
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    const message =
+      error.response?.data?.message ??
+      error.message ??
+      "Unable to load achievements right now.";
+
+    return (
+      <div className="rounded-2xl border border-rose-100 bg-rose-50 p-6 text-sm text-rose-700 shadow-sm">
+        {message}
+      </div>
+    );
+  }
+
+  const earnedAchievements = data?.earned ?? [];
+  const pendingAchievements = data?.pending ?? [];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          icon={<Trophy className="h-4 w-4 text-emerald-600" />}
+          label="Total earned"
+          value={`${data?.totalEarned ?? 0}`}
+          tone="emerald"
+        />
+        <StatCard
+          icon={<Target className="h-4 w-4 text-amber-600" />}
+          label="Available achievements"
+          value={`${data?.totalAvailable ?? 0}`}
+          tone="amber"
+        />
+        <StatCard
+          icon={<Medal className="h-4 w-4 text-blue-600" />}
+          label="Achievements earned"
+          value={`${earnedAchievements.length}`}
+          tone="blue"
+        />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        {/* Earned: compact grid */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[#111827]">
+              Earned achievements
+            </h3>
+            <span className="text-xs text-[#6B7280]">
+              {earnedAchievements.length} total
+            </span>
+          </div>
+
+          {earnedAchievements.length === 0 ? (
+            <EmptyState
+              title="No achievements earned yet"
+              description="You’ll see finished achievements here once the user unlocks them."
+            />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {earnedAchievements.map((achievement) => (
+                <div key={achievement.code} className="h-full">
+                  <AchievementCard achievement={achievement} status="earned" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* In-progress: scrollable grid */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[#111827]">
+              In-progress achievements
+            </h3>
+            <span className="text-xs text-[#6B7280]">
+              {pendingAchievements.length} total
+            </span>
+          </div>
+
+          {pendingAchievements.length === 0 ? (
+            <EmptyState
+              title="No achievements in progress"
+              description="When new goals are available, they will show up here."
+            />
+          ) : (
+            <div className="rounded-2xl border border-[#E5E7EB]">
+              {/* Constrain height on larger screens; allow normal flow on small screens */}
+              <div className="max-h-[520px] overflow-y-auto p-3 sm:p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {pendingAchievements.map((achievement) => (
+                    <div key={achievement.code} className="h-full">
+                      <AchievementCard
+                        achievement={achievement}
+                        status="pending"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const EmptyState = ({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) => (
+  <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-6 text-center">
+    <div className="text-sm font-medium text-[#111827]">{title}</div>
+    <div className="text-xs text-[#6B7280]">{description}</div>
+  </div>
+);
+
+const toneClasses: Record<"emerald" | "amber" | "blue", string> = {
+  emerald: "bg-emerald-50 text-emerald-700",
+  amber: "bg-amber-50 text-amber-700",
+  blue: "bg-blue-50 text-blue-700",
+};
+
+const StatCard = ({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone: "emerald" | "amber" | "blue";
+}) => {
+  return (
+    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+      <div
+        className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full ${toneClasses[tone]}`}
+      >
+        {icon}
+      </div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+        {label}
+      </div>
+      <div className="text-xl font-semibold text-[#111827]">{value}</div>
+    </div>
+  );
+};
+
+const AccountLoadingState = () => (
+  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+    <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      Loading user details…
+    </div>
+  </div>
+);
+
+const AccountErrorState = ({ error }: { error: AccountQueryError }) => {
+  const message =
+    error.response?.data?.message ?? error.message ?? "Unable to load user.";
+  return (
+    <div className="rounded-2xl border border-rose-100 bg-rose-50 p-6 text-sm text-rose-700 shadow-sm">
+      {message}
+    </div>
+  );
+};
+
+const AccountOverview = ({ account }: { account: AccountDetails }) => {
+  const displayName = getAccountDisplayName(account);
+
+  return (
+    <div className="space-y-6 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <AccountAvatar account={account} size="lg" />
+          <div className="space-y-1">
+            <div className="text-lg font-semibold text-[#111827]">
+              {displayName}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[#6B7280]">
+              <span className="inline-flex items-center gap-1">
+                <Mail className="h-4 w-4" />
+                {account.email}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Phone className="h-4 w-4" />
+                {account.phoneNumber ?? "No phone number on record"}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2 text-right text-sm text-[#6B7280]">
+          <AccountStatusPill isActive={account.isActive} />
+          <div>Account ID: {account.id}</div>
+          <div>Joined {formatFullDateTime(account.createdAt)}</div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <InfoRow
+          label="Email notifications"
+          value={account.emailNotificationsEnabled ? "Enabled" : "Disabled"}
+        />
+        <InfoRow
+          label="Transaction notifications"
+          value={
+            account.transactionNotificationsEnabled ? "Enabled" : "Disabled"
+          }
+        />
+        <InfoRow
+          label="Joined platform"
+          value={formatShortDate(account.createdAt)}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default function UserManagementDetailsPage() {
+  const { id } = useParams<{ id: string }>();
+  const accountId = id ?? "";
+
+  const {
+    data: account,
+    isLoading: isAccountLoading,
+    isError: isAccountError,
+    error: accountError,
+  } = useAccountQuery(accountId);
+
+  const {
+    data: achievements,
+    isLoading: isAchievementsLoading,
+    error: achievementsError,
+  } = useAccountAchievementsQuery(accountId);
+
+  const {
+    mutate: updateNotificationPreferences,
+    isPending: isUpdatingNotifications,
+    error: updateNotificationsError,
+  } = useUpdateAccountNotificationsMutation(accountId);
+
+  const pendingNotificationError = updateNotificationsError ?? null;
+
+  const breadcrumbLabel = useMemo(() => {
+    if (account) return getAccountDisplayName(account);
+    if (!accountId) return "Unknown user";
+    return `User #${accountId.slice(0, 6)}`;
+  }, [account, accountId]);
+
+  const handleNotificationChange = (
+    key: "emailNotificationsEnabled" | "transactionNotificationsEnabled",
+    nextValue: boolean,
+  ) => {
+    if (!account) return;
+
+    updateNotificationPreferences({
+      emailNotificationsEnabled:
+        key === "emailNotificationsEnabled"
+          ? nextValue
+          : account.emailNotificationsEnabled,
+      transactionNotificationsEnabled:
+        key === "transactionNotificationsEnabled"
+          ? nextValue
+          : account.transactionNotificationsEnabled,
+    });
+  };
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <nav className="text-sm text-[#6B7280]">
+          <Link
+            to="/users-management"
+            className="text-[#374151] hover:underline"
+          >
+            Users Management
+          </Link>
+          <span className="mx-2 text-[#9CA3AF]">/</span>
+          <span className="text-[#9CA3AF]">{breadcrumbLabel}</span>
+        </nav>
+
+        <Button
+          variant="ghost"
+          className="inline-flex items-center gap-2 text-sm text-[#6B7280]"
+          asChild
+        >
+          <Link to="/users-management">
+            <ArrowLeft className="h-4 w-4" />
+            Back to list
+          </Link>
+        </Button>
+      </div>
+
+      {isAccountLoading && <AccountLoadingState />}
+      {isAccountError && accountError && (
+        <AccountErrorState error={accountError} />
+      )}
+
+      {account && (
+        <div className="space-y-6">
+          <AccountOverview account={account} />
+
+          <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+            <div className="space-y-4 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+              <h3 className="text-base font-semibold text-[#111827]">
+                Contact details
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InfoRow label="Email address" value={account.email} />
+                <InfoRow
+                  label="Phone number"
+                  value={account.phoneNumber ?? "No phone number on record"}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+              <h3 className="text-base font-semibold text-[#111827]">
+                Notification preferences
+              </h3>
+              <p className="text-xs text-[#6B7280]">
+                Toggle individual notification channels for this user. Changes
+                are applied immediately.
+              </p>
+
+              <div className="space-y-3">
+                <NotificationRow
+                  id="email-notifications"
+                  label="Email notifications"
+                  description="Send account and platform updates to this user’s email."
+                  checked={account.emailNotificationsEnabled}
+                  disabled={isUpdatingNotifications}
+                  onChange={(next) =>
+                    handleNotificationChange("emailNotificationsEnabled", next)
+                  }
+                />
+                <NotificationRow
+                  id="transaction-notifications"
+                  label="Transaction notifications"
+                  description="Inform the user about new transactions and pod activity."
+                  checked={account.transactionNotificationsEnabled}
+                  disabled={isUpdatingNotifications}
+                  onChange={(next) =>
+                    handleNotificationChange(
+                      "transactionNotificationsEnabled",
+                      next,
+                    )
+                  }
+                />
+              </div>
+
+              {isUpdatingNotifications && (
+                <div className="inline-flex items-center gap-2 text-xs text-[#6B7280]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving notification preferences…
+                </div>
+              )}
+              {pendingNotificationError && (
+                <NotificationError error={pendingNotificationError} />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+            <h3 className="text-base font-semibold text-[#111827]">
+              Achievements
+            </h3>
+            <p className="text-xs text-[#6B7280]">
+              Track the progress of this user across the Koajo achievement
+              system.
+            </p>
+
+            <div className="mt-5">
+              <AchievementsSection
+                data={achievements}
+                isLoading={isAchievementsLoading}
+                error={achievementsError ?? null}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/*
+Legacy user details implementation retained for reference.
+
 import React, { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ChevronDown, Download, Eye } from "lucide-react";
@@ -37,7 +623,9 @@ function TopTabs({
           <button
             key={t}
             onClick={() => onChange(t)}
-            className={`relative pb-3 text-sm ${isActive ? "text-[#1F2937]" : "text-[#8A9099] hover:text-[#1F2937]"}`}
+            className={`relative pb-3 text-sm ${
+              isActive ? "text-[#1F2937]" : "text-[#8A9099] hover:text-[#1F2937]"
+            }`}
           >
             {t}
             {isActive && (
@@ -56,7 +644,6 @@ export default function UserManagementDetailsPage() {
 
   return (
     <section className="space-y-6">
-      {/* Breadcrumb */}
       <nav className="text-sm text-[#6B7280]">
         <Link to="/users-management" className="hover:underline text-[#374151]">
           Users Management
@@ -68,7 +655,6 @@ export default function UserManagementDetailsPage() {
       </nav>
 
       <div className="rounded-2xl border bg-white shadow-sm">
-        {/* Header row with tabs + export */}
         <div className="flex items-center justify-between px-6 pt-4">
           <TopTabs active={tab} onChange={setTab} />
           <div className="flex items-center gap-2">
@@ -82,7 +668,6 @@ export default function UserManagementDetailsPage() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="px-6 pb-6">
           {tab === "Users Details" && <UsersDetailsCard userId={String(id)} />}
           {tab === "Contribution History" && <ContributionHistoryTable />}
@@ -241,7 +826,7 @@ function ContributionHistoryTable() {
       label: "Amount",
       render: (v: number) => (
         <span className={`${v >= 0 ? "text-emerald-600" : "text-[#111827]"}`}>
-          {v >= 0 ? `+$${v.toFixed(2)}` : `-$${Math.abs(v).toFixed(2)}`}
+          {v >= 0 ? \`+$\${v.toFixed(2)}\` : \`-$\${Math.abs(v).toFixed(2)}\`}
         </span>
       ),
     },
@@ -306,7 +891,7 @@ function GroupHistoryTable() {
     () =>
       Array.from({ length: 24 }).map((_, i) => ({
         id: i + 1,
-        groupId: `#9044${4904 + i}`,
+        groupId: \`#9044\${4904 + i}\`,
         podLabel: i % 3 === 1 ? "$ 200 Pod" : "$ 100 Pod",
         podTone:
           i % 3 === 1
@@ -354,7 +939,6 @@ function GroupHistoryTable() {
 
   return (
     <div className="pt-4">
-      {/* Grid */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {slice.map((g) => (
           <GroupCard
@@ -376,7 +960,6 @@ function GroupHistoryTable() {
         )}
       </div>
 
-      {/* Footer controls */}
       <div className="mt-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -399,80 +982,53 @@ function GroupHistoryTable() {
               ▾
             </span>
           </div>
-          <span className="text-sm text-gray-500">
-            Showing {totalCount === 0 ? 0 : start + 1} -{" "}
-            {Math.min(end, totalCount)} of {totalCount}
+          <span className="text-sm text-[#6B7280]">
+            Showing {slice.length} of {totalCount} groups
           </span>
         </div>
-
-        <Pagination
-          page={clampedPage}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="rounded-xl h-9 px-3 text-sm inline-flex items-center gap-2"
+            onClick={() => setAddOpen(true)}
+          >
+            + Add New Member
+          </Button>
+          <Pagination
+            page={clampedPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
       </div>
 
-      {/* View dialog */}
       <GroupDetailsDialog
         open={open}
         onOpenChange={setOpen}
         groupId={activeGroupId}
-        onAdd={() => {
-          setAddOpen(true);
-          setOpen(false);
-        }}
       />
 
-      {/* Confirm delete dialog */}
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete group"
+        title="Remove group"
         itemName={pendingGroup?.groupId}
         onConfirm={() => {
           if (!pendingGroup) return;
-          setItems((prev) => prev.filter((x) => x.id !== pendingGroup.id));
-          setPendingGroup(null);
+          setItems((prev) => prev.filter((g) => g.id !== pendingGroup.id));
         }}
       />
 
-      <AddNewMembersDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        teamName="Groups"
-        onAdd={(_members) => {
-          // integrate later
-          // console.log("Added to users:", members.map((m) => m.name));
-        }}
-      />
+      <AddNewMembersDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
 
 function ActivityLogs() {
-  const items = Array.from({ length: 12 }).map((_, i) => ({
-    id: i + 1,
-    ts: "2025-10-02 12:3" + (i % 10),
-    text: [
-      "Updated profile",
-      "Submitted KYC",
-      "Joined Group 2",
-      "Made a payment",
-    ][i % 4],
-  }));
   return (
-    <div className="pt-6">
-      <ul className="space-y-3">
-        {items.map((it) => (
-          <li key={it.id} className="flex items-start gap-3">
-            <span className="mt-1 h-2 w-2 rounded-full bg-[#FF8C42]" />
-            <div>
-              <div className="text-sm text-[#374151]">{it.text}</div>
-              <div className="text-xs text-[#9CA3AF]">{it.ts}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="pt-4 text-sm text-[#6B7280]">
+      Activity logs content will be available soon.
     </div>
   );
 }
+*/

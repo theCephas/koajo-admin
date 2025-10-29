@@ -329,3 +329,169 @@ export const updatePodPlan = async ({
 export const deletePodPlan = async (planId: string) => {
   await apiClient.delete(`/pod-plans/${planId}`);
 };
+
+export interface PermissionDefinition {
+  id: string;
+  code: string;
+  name: string | Record<string, unknown> | null;
+  description: string | Record<string, unknown> | null;
+}
+
+export interface RoleSummary {
+  id: string;
+  name: string | Record<string, unknown> | null;
+  description: string | Record<string, unknown> | null;
+  permissions: PermissionDefinition[];
+}
+
+export interface CreateRolePayload {
+  name: string;
+  description: string;
+  permissionCodes: string[];
+}
+
+export interface UpdateRolePermissionsPayload {
+  permissionCodes: string[];
+}
+
+export const getRoles = async () => {
+  const { data } = await apiClient.get<RoleSummary[]>("/roles");
+  return data;
+};
+
+export const createRole = async (payload: CreateRolePayload) => {
+  const { data } = await apiClient.post<RoleSummary>("/roles", payload);
+  return data;
+};
+
+export const updateRolePermissions = async ({
+  roleId,
+  payload,
+}: {
+  roleId: string;
+  payload: UpdateRolePermissionsPayload;
+}) => {
+  const { data } = await apiClient.put<RoleSummary>(
+    `/roles/${roleId}/permissions`,
+    payload,
+  );
+
+  return data;
+};
+
+export const getPermissions = async () => {
+  const { data } = await apiClient.get<PermissionDefinition[]>("/permissions");
+  return data;
+};
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phoneNumber: string | null;
+  isActive: boolean;
+  requiresPasswordChange: boolean;
+  createdAt: string;
+  updatedAt: string;
+  invitedAt: string | null;
+  invitedById: string | null;
+  lastLoginAt: string | null;
+  roles: RoleSummary[];
+  explicitPermissions: PermissionDefinition[];
+  deniedPermissions: PermissionDefinition[];
+  effectivePermissions: string[];
+}
+
+export type AdminUserDetails = AdminUserSummary;
+
+export interface CreateAdminUserPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  roleIds: string[];
+  allowPermissions: string[];
+  denyPermissions: string[];
+  generatePassword: boolean;
+  password?: string;
+  inviteTemplateCode: string;
+}
+
+export interface UpdateAdminUserPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  isActive: boolean;
+}
+
+export interface UpdateAdminUserRolesPayload {
+  roleIds: string[];
+}
+
+export interface UpdateAdminUserPermissionsPayload {
+  allow: string[];
+  deny: string[];
+}
+
+export const getAdminUsers = async () => {
+  const { data } = await apiClient.get<AdminUserSummary[]>("/users");
+  return data;
+};
+
+export const createAdminUser = async (payload: CreateAdminUserPayload) => {
+  const { data } = await apiClient.post<AdminUserDetails>("/users", payload);
+  return data;
+};
+
+export const getAdminUserById = async (adminId: string) => {
+  const { data } = await apiClient.get<AdminUserDetails>(`/users/${adminId}`);
+  return data;
+};
+
+export const updateAdminUser = async ({
+  adminId,
+  payload,
+}: {
+  adminId: string;
+  payload: UpdateAdminUserPayload;
+}) => {
+  const { data } = await apiClient.patch<AdminUserDetails>(
+    `/users/${adminId}`,
+    payload,
+  );
+  return data;
+};
+
+export const updateAdminUserRoles = async ({
+  adminId,
+  payload,
+}: {
+  adminId: string;
+  payload: UpdateAdminUserRolesPayload;
+}) => {
+  const { data } = await apiClient.put<AdminUserDetails>(
+    `/users/${adminId}/roles`,
+    payload,
+  );
+  return data;
+};
+
+export const updateAdminUserPermissions = async ({
+  adminId,
+  payload,
+}: {
+  adminId: string;
+  payload: UpdateAdminUserPermissionsPayload;
+}) => {
+  const { data } = await apiClient.put<AdminUserDetails>(
+    `/users/${adminId}/permissions`,
+    payload,
+  );
+  return data;
+};
+
+export const deleteAdminUser = async (adminId: string) => {
+  await apiClient.delete(`/users/${adminId}`);
+};

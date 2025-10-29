@@ -21,6 +21,13 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import PodsManagementPage from "@/pages/pods-management/pods-management";
 import PodDetailsPage from "@/pages/pods-management/pod-details-page";
 import PodPlansManagementPage from "@/pages/pod-plans-management/pod-plans-management";
+import RolesManagementPage from "@/pages/roles-management/roles-management";
+import CreateRolePage from "@/pages/roles-management/create-role-page";
+import RoleDetailsPage from "@/pages/roles-management/role-details-page";
+import AdminAccessPage from "@/pages/admin-access/admin-access-page";
+import CreateAdminPage from "@/pages/admin-access/create-admin-page";
+import AdminDetailsPage from "@/pages/admin-access/admin-details-page";
+import Profile from "@/pages/profile/profile";
 
 export const router = createBrowserRouter([
   {
@@ -68,6 +75,30 @@ export const router = createBrowserRouter([
         element: <PodPlansManagementPage />,
       },
       {
+        path: "roles-management",
+        element: <RolesManagementPage />,
+      },
+      {
+        path: "roles-management/new",
+        element: <CreateRolePage />,
+      },
+      {
+        path: "roles-management/:roleId",
+        element: <RoleDetailsPage />,
+      },
+      {
+        path: "admin-access",
+        element: <AdminAccessPage />,
+      },
+      {
+        path: "admin-access/new",
+        element: <CreateAdminPage />,
+      },
+      {
+        path: "admin-access/:adminId",
+        element: <AdminDetailsPage />,
+      },
+      {
         path: "groups-management",
         element: <GroupsManagament />,
       },
@@ -94,6 +125,10 @@ export const router = createBrowserRouter([
       {
         path: "contributions-and-allocations/:id",
         element: <CADetailsPage />,
+      },
+      {
+        path: "profile",
+        element: <Profile />,
       },
       {
         path: "*",

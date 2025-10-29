@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   HiOutlineViewGrid,
   HiOutlineUser,
@@ -8,13 +8,16 @@ import {
   HiOutlineBell,
   HiOutlineCube,
   HiOutlineTemplate,
+  HiOutlineShieldCheck,
+  HiOutlineKey,
   // HiChevronRight,
 } from "react-icons/hi";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import KoajoIcon from "../../../public/koajo.png";
 import ScrollToTop from "../ui/scroll-to-top";
+import Avatar from "../../../public/avatar.svg?url";
+import { ChevronDown } from "lucide-react";
 
 const navigation = [
   { label: "Dashboard", to: "/", icon: HiOutlineViewGrid },
@@ -40,6 +43,16 @@ const navigation = [
     icon: HiOutlineTemplate,
   },
   {
+    label: "Roles & Permissions",
+    to: "/roles-management",
+    icon: HiOutlineShieldCheck,
+  },
+  {
+    label: "Admin Access",
+    to: "/admin-access",
+    icon: HiOutlineKey,
+  },
+  {
     label: "Groups Management",
     to: "/groups-management",
     icon: HiOutlineCollection,
@@ -57,6 +70,7 @@ const navigation = [
 ];
 
 export function AppShell() {
+  const navigate = useNavigate();
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <ScrollToTop smooth={true} />
@@ -132,7 +146,16 @@ export function AppShell() {
           <span className="text-lg font-semibold tracking-tight">Koajo</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <Button variant="secondary">Support</Button>
+          <div
+            onClick={() => void navigate("/profile")}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <img src={Avatar} alt="User Avatar" />
+            <div className="flex items-center gap-2 ">
+              <p className="text-sm font-medium">admin@koajo.com</p>
+              <ChevronDown className="h-3 w-3 text-gray-500" />
+            </div>
+          </div>
         </div>
       </header>
 

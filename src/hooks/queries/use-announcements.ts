@@ -67,12 +67,12 @@ export const useCreateAnnouncementMutation = (
     CreateAnnouncementPayload
   >({
     mutationFn: createAnnouncement,
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, context) => {
       void queryClient.invalidateQueries({
         queryKey: ANNOUNCEMENTS_QUERY_KEY,
       });
 
-      return options?.onSuccess?.(data, variables, context);
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
     },
     ...options,
   });

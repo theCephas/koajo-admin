@@ -6,8 +6,12 @@ import DataTable, { type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounce";
-import { usePodsQuery, type PodsQueryError } from "@/hooks/queries/use-pods";
-import type { PodSummary } from "@/services/api";
+import {
+  usePodStatsQuery,
+  usePodsQuery,
+  type PodsQueryError,
+} from "@/hooks/queries/use-pods";
+import type { PodSummary, PodsStatsResponse } from "@/services/api";
 import { PodStatusBadge } from "./components/pod-status-badge";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -32,6 +36,47 @@ const formatDate = (isoString: string) => {
     day: "numeric",
   }).format(date);
 };
+
+const statNumberFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
+
+const formatStatValue = (
+  stats: PodsStatsResponse | undefined,
+  key: keyof PodsStatsResponse,
+) => {
+  const value = stats?.[key];
+  if (typeof value !== "number") {
+    return "—";
+  }
+  return statNumberFormatter.format(value);
+};
+
+const PodStatCard = ({
+  label,
+  value,
+  accent,
+  isLoading,
+}: {
+  label: string;
+  value: string;
+  accent: string;
+  isLoading: boolean;
+}) => (
+  <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
+    <p className="text-sm text-[#6B7280]">{label}</p>
+    <div className="mt-3 flex items-center gap-3">
+      <div className={`h-9 w-9 rounded-xl ${accent}`} />
+      <div className="text-2xl font-semibold text-[#111827]">
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        ) : (
+          value
+        )}
+      </div>
+    </div>
+  </div>
+);
 
 const ErrorBanner = ({
   error,
@@ -75,6 +120,14 @@ export default function PodsManagementPage() {
 
   const { data, isLoading, isFetching, isError, error, refetch } =
     usePodsQuery(queryParams);
+
+  const {
+    data: statsData,
+    isLoading: isStatsLoading,
+    isError: isStatsError,
+    error: statsError,
+    refetch: refetchStats,
+  } = usePodStatsQuery();
 
   const totalCount = data?.total ?? 0;
   const pods = data?.items ?? [];
@@ -190,6 +243,71 @@ export default function PodsManagementPage() {
             <Download className="h-4 w-4" />
             Export CSV
           </Button> */}
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#111827]">
+                Pods overview
+              </h2>
+              <p className="text-sm text-[#6B7280]">
+                Quick insight into pod activity and membership.
+              </p>
+            </div>
+            {isStatsError && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl"
+                onClick={() => void refetchStats()}
+              >
+                Retry stats
+              </Button>
+            )}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {(
+              [
+                {
+                  key: "totalOpenPods",
+                  label: "Open Pods",
+                  accent: "bg-indigo-100",
+                },
+                {
+                  key: "totalMembers",
+                  label: "Members",
+                  accent: "bg-emerald-100",
+                },
+                {
+                  key: "totalPendingInvites",
+                  label: "Pending Invites",
+                  accent: "bg-amber-100",
+                },
+                {
+                  key: "totalIncompletePods",
+                  label: "Incomplete Pods",
+                  accent: "bg-rose-100",
+                },
+              ] as const
+            ).map((stat) => (
+              <PodStatCard
+                key={stat.key}
+                label={stat.label}
+                accent={stat.accent}
+                isLoading={isStatsLoading && !statsData}
+                value={formatStatValue(statsData, stat.key)}
+              />
+            ))}
+          </div>
+          {isStatsError && statsError && (
+            <p className="text-sm text-rose-600">
+              {statsError.response?.data?.message ??
+                statsError.message ??
+                "Unable to load pod stats."}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

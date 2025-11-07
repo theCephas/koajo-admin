@@ -10,10 +10,6 @@ import { SettingsPage } from "@/pages/settings/settings-page";
 import KycManagement from "@/pages/kyc-management/kyc-management";
 import UserManagement from "@/pages/user-management/user-management";
 import UserManagementDetailsPage from "@/pages/user-management/user-details-page";
-import GroupsManagament from "@/pages/groups-management/groups-managament";
-import ProjectsPage from "@/pages/groups-management/projects-page";
-import ProjectDetailsPage from "@/pages/groups-management/project-details-page";
-import ContactsPage from "@/pages/groups-management/contacts-page";
 import Notifications from "@/pages/notifications/notifications";
 import ContributionsAndAllocations from "@/pages/contributions-and-allocations/contributions-and-allocations";
 import CADetailsPage from "@/pages/contributions-and-allocations/ca-details-page";
@@ -97,22 +93,6 @@ export const router = createBrowserRouter([
       {
         path: "admin-access/:adminId",
         element: <AdminDetailsPage />,
-      },
-      {
-        path: "groups-management",
-        element: <GroupsManagament />,
-      },
-      {
-        path: "groups-management/projects",
-        element: <ProjectsPage />,
-      },
-      {
-        path: "/groups-management/projects/:groupId",
-        element: <ProjectDetailsPage />,
-      },
-      {
-        path: "/groups-management/projects/:groupId/contacts",
-        element: <ContactsPage />,
       },
       {
         path: "notifications",

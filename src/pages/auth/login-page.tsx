@@ -24,6 +24,7 @@ import { useAuthStore } from "@/stores/auth-store";
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -35,11 +36,12 @@ export function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const form = useForm<LoginFormValues>({
+  const form = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
   });
 
@@ -51,7 +53,7 @@ export function LoginPage() {
       try {
         const response = await mutateAsync(values);
         // single store update, no loops
-        setAuth(response);
+        setAuth(response, { rememberMe: values.rememberMe });
         toast.success("Welcome back to Koajo 👋", {
           id: toastId,
           duration: 3000,
@@ -118,45 +120,9 @@ export function LoginPage() {
         </svg>
       </div>
 
-      <div className="relative z-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        {/* illustrative left panel (hidden on small screens) */}
-        <div className="hidden md:flex flex-col items-center justify-center space-y-6 px-6">
-          <div className="w-56 h-56 rounded-3xl bg-gradient-to-br from-yellow-300 to-pink-400 p-6 shadow-xl flex items-center justify-center">
-            {/* stylized coin stack illustration */}
-            <svg viewBox="0 0 120 120" className="w-full h-full">
-              <ellipse cx="60" cy="20" rx="32" ry="12" fill="#FFD27A" />
-              <ellipse cx="60" cy="40" rx="32" ry="12" fill="#FFB65E" />
-              <ellipse cx="60" cy="60" rx="32" ry="12" fill="#FF9B3B" />
-              <rect
-                x="20"
-                y="25"
-                width="80"
-                height="10"
-                rx="5"
-                fill="#fff"
-                opacity="0.12"
-              />
-              <g transform="translate(70,10)" fill="#fff" opacity="0.9">
-                <circle cx="8" cy="8" r="2" />
-                <circle cx="18" cy="6" r="1.6" />
-                <circle cx="26" cy="14" r="1.2" />
-              </g>
-            </svg>
-          </div>
-
-          <div className="text-center">
-            <h2 className="text-lg font-semibold text-white">
-              Contribute smarter
-            </h2>
-            <p className="text-sm text-white/80 max-w-xs">
-              Fast, transparent contributions and payouts — built for teams and
-              finance-first workflows.
-            </p>
-          </div>
-        </div>
-
+      <div className="relative z-10 w-full max-w-xl ">
         {/* form card */}
-        <div className="w-full bg-card/70 border border-white/10 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
+        <div className="w-full bg-card/60 border border-white/10 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-3">
               <div className="w-[100px]">
@@ -220,6 +186,30 @@ export function LoginPage() {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between !mt-2">
+                    <div className="flex items-center gap-2">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                          className="h-4 w-4 rounded border border-input text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                        Remember me
+                      </FormLabel>
+                    </div>
                   </FormItem>
                 )}
               />

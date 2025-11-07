@@ -4,15 +4,19 @@ import type { AxiosError } from "axios";
 import {
   getPodById,
   getPods,
+  getPodStats,
   type PodDetails,
   type PodsQueryParams,
   type PodsResponse,
+  type PodsStatsResponse,
 } from "@/services/api";
 
 export type PodsQueryError = AxiosError<{ message?: string }>;
 export type PodQueryError = AxiosError<{ message?: string }>;
+export type PodStatsQueryError = AxiosError<{ message?: string }>;
 
 const PODS_QUERY_KEY = ["pods"];
+const PODS_STATS_QUERY_KEY = ["pods", "stats"] as const;
 
 export const podsQueryKey = (params: PodsQueryParams = {}) =>
   [
@@ -44,5 +48,25 @@ export const usePodQuery = (
     queryKey: podQueryKey(podId),
     queryFn: () => getPodById(podId),
     enabled: Boolean(podId),
+    ...options,
+  });
+
+export const usePodStatsQuery = (
+  options?: UseQueryOptions<
+    PodsStatsResponse,
+    PodStatsQueryError,
+    PodsStatsResponse,
+    typeof PODS_STATS_QUERY_KEY
+  >,
+) =>
+  useQuery<
+    PodsStatsResponse,
+    PodStatsQueryError,
+    PodsStatsResponse,
+    typeof PODS_STATS_QUERY_KEY
+  >({
+    queryKey: PODS_STATS_QUERY_KEY,
+    queryFn: () => getPodStats(),
+    staleTime: 5 * 60 * 1000,
     ...options,
   });

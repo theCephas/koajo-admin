@@ -3,6 +3,7 @@ import { apiClient } from "@/lib/api-client";
 export interface LoginPayload {
   email: string;
   password: string;
+  rememberMe: boolean;
 }
 
 export interface LoginResponse {
@@ -11,6 +12,7 @@ export interface LoginResponse {
   expiresAt: string;
   role: string;
   isSuperAdmin: boolean;
+  refreshToken?: string | null;
 }
 
 export const login = async (payload: LoginPayload) => {
@@ -199,6 +201,84 @@ export const getAccountAchievements = async (accountId: string) => {
   return data;
 };
 
+export type AnnouncementChannel = "email" | "in-app";
+export type AnnouncementSeverity =
+  | "success"
+  | "info"
+  | "warning"
+  | "critical"
+  | "error";
+
+export interface CreateAnnouncementPayload {
+  channel: AnnouncementChannel;
+  name: string;
+  notificationTitle: string;
+  message: string;
+  severity: AnnouncementSeverity;
+  actionUrl?: string;
+  imageUrl?: string;
+  sendToAll: boolean;
+  accountIds: string[];
+}
+
+export interface AnnouncementResponse extends CreateAnnouncementPayload {
+  id: string;
+  createdAt: string;
+}
+
+export const createAnnouncement = async (
+  payload: CreateAnnouncementPayload,
+) => {
+  const { data } = await apiClient.post<AnnouncementResponse>(
+    "/announcements",
+    payload,
+  );
+  return data;
+};
+
+export interface AnnouncementListItem {
+  id: string;
+  name: string;
+  channel: AnnouncementChannel;
+  severity: AnnouncementSeverity;
+  notificationTitle: string;
+  sendToAll: boolean;
+  actionUrl?: string | null;
+  imageUrl?: string | null;
+  totalRecipients: number;
+  createdAt: string;
+}
+
+export interface AnnouncementsResponse {
+  total: number;
+  items: AnnouncementListItem[];
+}
+
+export interface AnnouncementsQueryParams {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const getAnnouncements = async ({
+  search,
+  limit = 50,
+  offset = 0,
+}: AnnouncementsQueryParams) => {
+  const { data } = await apiClient.get<AnnouncementsResponse>(
+    "/announcements",
+    {
+      params: {
+        search: search ?? undefined,
+        limit,
+        offset,
+      },
+    },
+  );
+
+  return data;
+};
+
 export interface PodSummary {
   id: string;
   type: string;
@@ -214,6 +294,13 @@ export interface PodSummary {
 export interface PodsResponse {
   total: number;
   items: PodSummary[];
+}
+
+export interface PodsStatsResponse {
+  totalOpenPods: number;
+  totalMembers: number;
+  totalPendingInvites: number;
+  totalIncompletePods: number;
 }
 
 export interface PodsQueryParams {
@@ -235,6 +322,11 @@ export const getPods = async ({
     },
   });
 
+  return data;
+};
+
+export const getPodStats = async () => {
+  const { data } = await apiClient.get<PodsStatsResponse>("/pods/stats");
   return data;
 };
 

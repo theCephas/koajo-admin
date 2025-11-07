@@ -3,7 +3,6 @@ import {
   HiOutlineViewGrid,
   HiOutlineUser,
   HiOutlineClipboardList,
-  HiOutlineCollection,
   HiOutlineDocumentText,
   HiOutlineBell,
   HiOutlineCube,
@@ -51,11 +50,6 @@ const navigation = [
     label: "Admin Access",
     to: "/admin-access",
     icon: HiOutlineKey,
-  },
-  {
-    label: "Groups Management",
-    to: "/groups-management",
-    icon: HiOutlineCollection,
   },
   { label: "Notifications", to: "/notifications", icon: HiOutlineBell },
   {

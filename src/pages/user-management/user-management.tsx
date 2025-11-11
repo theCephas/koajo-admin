@@ -1,13 +1,29 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, MoreVertical, Search } from "lucide-react";
+import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   useAccountsQuery,
+  useUpdateAccountStatusMutation,
   type AccountsQueryError,
 } from "@/hooks/queries/use-accounts";
 import type { AccountSummary } from "@/services/api";
@@ -78,6 +94,130 @@ const ErrorBanner = ({
         </Button>
       </div>
     </div>
+  );
+};
+
+const AccountActions = ({
+  account,
+  onViewDetails,
+}: {
+  account: AccountSummary;
+  onViewDetails: () => void;
+}) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const accountName = getAccountDisplayName(account);
+  const isActivating = !account.isActive;
+
+  const { mutate: updateStatus, isPending } = useUpdateAccountStatusMutation(
+    account.id,
+    {
+      onSuccess: (data) => {
+        setConfirmOpen(false);
+        toast.success(
+          `Account ${data.isActive ? "activated" : "disabled"} successfully`,
+        );
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to update account status";
+        toast.error(message);
+      },
+    },
+  );
+
+  const handleToggleStatus = () => {
+    updateStatus({
+      email: account.email,
+      firstName: account.firstName ?? "",
+      lastName: account.lastName ?? "",
+      phoneNumber: account.phoneNumber ?? "",
+      isActive: !account.isActive,
+    });
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+            disabled={isPending}
+          >
+            <MoreVertical className="h-4 w-4 text-[#6B7280]" />
+            <span className="sr-only">More actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-40">
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              onViewDetails();
+            }}
+          >
+            View details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              setConfirmOpen(true);
+            }}
+            disabled={isPending}
+          >
+            {account.isActive ? "Disable" : "Set Active"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!isPending) {
+            setConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">
+              {isActivating ? "Activate Account" : "Disable Account"}
+            </DialogTitle>
+            <DialogDescription>
+              {isActivating
+                ? `Are you sure you want to activate "${accountName}"? This will restore their access to the platform.`
+                : `Are you sure you want to disable "${accountName}"? This will temporarily block their access to the platform.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleToggleStatus}
+              disabled={isPending}
+              variant={isActivating ? "default" : "destructive"}
+            >
+              {isPending
+                ? isActivating
+                  ? "Activating..."
+                  : "Disabling..."
+                : isActivating
+                  ? "Activate"
+                  : "Disable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
@@ -172,16 +312,13 @@ export default function UserManagement() {
       {
         key: "actions",
         label: "",
-        width: 120,
+        width: 80,
         render: (_, account) => (
           <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/users-management/${account.id}`)}
-            >
-              View details
-            </Button>
+            <AccountActions
+              account={account}
+              onViewDetails={() => navigate(`/users-management/${account.id}`)}
+            />
           </div>
         ),
       },

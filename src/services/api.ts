@@ -177,6 +177,31 @@ export const updateAccountNotifications = async ({
   return data;
 };
 
+export interface UpdateAccountStatusPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  isActive: boolean;
+}
+
+export type UpdateAccountStatusResponse = AccountDetails;
+
+export const updateAccountStatus = async ({
+  accountId,
+  payload,
+}: {
+  accountId: string;
+  payload: UpdateAccountStatusPayload;
+}) => {
+  const { data } = await apiClient.patch<UpdateAccountStatusResponse>(
+    `/users/${accountId}`,
+    payload,
+  );
+
+  return data;
+};
+
 export interface AccountAchievement {
   code: string;
   name: string;

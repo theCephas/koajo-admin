@@ -12,18 +12,22 @@ import {
   getAccountById,
   getAccounts,
   updateAccountNotifications,
+  updateAccountStatus,
   type AccountAchievementsResponse,
   type AccountDetails,
   type AccountsQueryParams,
   type AccountsResponse,
   type UpdateAccountNotificationsPayload,
   type UpdateAccountNotificationsResponse,
+  type UpdateAccountStatusPayload,
+  type UpdateAccountStatusResponse,
 } from "@/services/api";
 
 export type AccountsQueryError = AxiosError<{ message?: string }>;
 export type AccountQueryError = AxiosError<{ message?: string }>;
 export type AccountAchievementsQueryError = AxiosError<{ message?: string }>;
 export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
+export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
 
 const ACCOUNTS_QUERY_KEY = ["accounts"] as const;
 
@@ -140,6 +144,67 @@ export const useUpdateAccountNotificationsMutation = (
                   data.transactionNotificationsEnabled,
               }
             : prev,
+      );
+
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+
+    ...options,
+  });
+};
+
+export const useUpdateAccountStatusMutation = (
+  accountId: string,
+  options?: UseMutationOptions<
+    UpdateAccountStatusResponse,
+    UpdateAccountStatusError,
+    UpdateAccountStatusPayload,
+    unknown
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    UpdateAccountStatusResponse,
+    UpdateAccountStatusError,
+    UpdateAccountStatusPayload,
+    unknown
+  >({
+    mutationFn: (payload) =>
+      updateAccountStatus({
+        accountId,
+        payload,
+      }),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      // Update individual account cache with full response
+      queryClient.setQueryData<AccountDetails | undefined>(
+        accountQueryKey(accountId),
+        data,
+      );
+
+      // Update accounts list cache optimistically
+      queryClient.setQueriesData<AccountsResponse>(
+        { queryKey: ACCOUNTS_QUERY_KEY },
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            items: oldData.items.map((account) =>
+              account.id === accountId
+                ? {
+                    ...account,
+                    email: data.email,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    phoneNumber: data.phoneNumber,
+                    isActive: data.isActive,
+                  }
+                : account,
+            ),
+          };
+        },
       );
 
       void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });

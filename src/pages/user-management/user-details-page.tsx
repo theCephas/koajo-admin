@@ -1,17 +1,36 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  FlagTriangleRight,
+  Link2Off,
   Loader2,
   Mail,
-  Phone,
   Medal,
+  MoreVertical,
+  Phone,
   Target,
   Trophy,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import {
   AccountAvatar,
   getAccountDisplayName,
@@ -21,11 +40,16 @@ import {
   useAccountAchievementsQuery,
   useAccountQuery,
   useUpdateAccountNotificationsMutation,
+  useRemoveAccountBankConnectionMutation,
   type AccountAchievementsQueryError,
   type AccountQueryError,
   type UpdateAccountNotificationsError,
 } from "@/hooks/queries/use-accounts";
 import type { AccountAchievement, AccountDetails } from "@/services/api";
+import {
+  AccountFlagsControls,
+  getAccountFlagReasons,
+} from "./components/account-flags-controls";
 
 const formatFullDateTime = (isoString?: string | null) => {
   if (!isoString) return "—";
@@ -364,6 +388,7 @@ const AccountErrorState = ({ error }: { error: AccountQueryError }) => {
 
 const AccountOverview = ({ account }: { account: AccountDetails }) => {
   const displayName = getAccountDisplayName(account);
+  const flagReasons = getAccountFlagReasons(account);
 
   return (
     <div className="space-y-6 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
@@ -371,8 +396,22 @@ const AccountOverview = ({ account }: { account: AccountDetails }) => {
         <div className="flex items-center gap-4">
           <AccountAvatar account={account} size="lg" />
           <div className="space-y-1">
-            <div className="text-lg font-semibold text-[#111827]">
-              {displayName}
+            <div className="flex items-center gap-1 text-lg font-semibold text-[#111827]">
+              <span>{displayName}</span>
+              {flagReasons.length > 0 && (
+                <span
+                  className="flex items-center"
+                  title={`Flagged: ${flagReasons.join(", ")}`}
+                >
+                  <FlagTriangleRight
+                    className="h-4 w-4 text-amber-500"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">
+                    Flagged: {flagReasons.join(", ")}
+                  </span>
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm text-[#6B7280]">
               <span className="inline-flex items-center gap-1">
@@ -387,7 +426,10 @@ const AccountOverview = ({ account }: { account: AccountDetails }) => {
           </div>
         </div>
         <div className="space-y-2 text-right text-sm text-[#6B7280]">
-          <AccountStatusPill isActive={account.isActive} />
+          <div className="flex items-center justify-end gap-2">
+            <AccountStatusPill isActive={account.isActive} />
+            <AccountActionsMenu account={account} />
+          </div>
           <div>Account ID: {account.id}</div>
           <div>Joined {formatFullDateTime(account.createdAt)}</div>
         </div>
@@ -410,6 +452,100 @@ const AccountOverview = ({ account }: { account: AccountDetails }) => {
         />
       </div>
     </div>
+  );
+};
+
+const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const { mutate: removeBankConnection, isPending } =
+    useRemoveAccountBankConnectionMutation(account.id, {
+      onSuccess: () => {
+        setConfirmOpen(false);
+        toast.success("Bank connection removed");
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to remove bank connection";
+        toast.error(message);
+      },
+    });
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+          >
+            <MoreVertical className="h-4 w-4 text-[#6B7280]" />
+            <span className="sr-only">More actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[260px] space-y-2">
+          <div className="px-2 pb-2">
+            <AccountFlagsControls account={account} />
+          </div>
+          {account.bankAccountLinked && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer text-rose-600 focus:text-rose-600"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setConfirmOpen(true);
+                }}
+              >
+                <Link2Off className="mr-2 h-4 w-4" aria-hidden="true" />
+                Remove bank connection
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!isPending) {
+            setConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg">
+              Remove bank connection
+            </DialogTitle>
+            <DialogDescription>
+              This will disconnect the user’s linked bank account. They will
+              need to reconnect before making future transfers. Are you sure you
+              want to continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => removeBankConnection()}
+              disabled={isPending}
+            >
+              {isPending ? "Removing…" : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

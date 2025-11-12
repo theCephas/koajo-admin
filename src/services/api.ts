@@ -116,6 +116,13 @@ export interface AccountSummary {
   isActive: boolean;
   emailNotificationsEnabled: boolean;
   transactionNotificationsEnabled: boolean;
+  kycStatus?: string | null;
+  bankAccountLinked?: boolean;
+  requiresFraudReview?: boolean;
+  fraudReviewReason?: string | null;
+  missedPaymentFlag?: boolean;
+  missedPaymentReason?: string | null;
+  flagsUpdatedAt?: string | null;
 }
 
 export interface AccountsResponse {
@@ -175,6 +182,62 @@ export const updateAccountNotifications = async ({
   );
 
   return data;
+};
+
+export interface UpdateAccountStatusPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  isActive: boolean;
+}
+
+export type UpdateAccountStatusResponse = AccountDetails;
+
+export const updateAccountStatus = async ({
+  accountId,
+  payload,
+}: {
+  accountId: string;
+  payload: UpdateAccountStatusPayload;
+}) => {
+  const { data } = await apiClient.patch<UpdateAccountStatusResponse>(
+    `/users/${accountId}`,
+    payload,
+  );
+
+  return data;
+};
+
+export interface UpdateAccountFlagsPayload {
+  fraudReview?: boolean;
+  missedPayment?: boolean;
+}
+
+export interface UpdateAccountFlagsResponse {
+  requiresFraudReview: boolean;
+  fraudReviewReason: string | null;
+  missedPaymentFlag: boolean;
+  missedPaymentReason: string | null;
+}
+
+export const updateAccountFlags = async ({
+  accountId,
+  payload,
+}: {
+  accountId: string;
+  payload: UpdateAccountFlagsPayload;
+}) => {
+  const { data } = await apiClient.patch<UpdateAccountFlagsResponse>(
+    `/accounts/${accountId}/flags`,
+    payload,
+  );
+
+  return data;
+};
+
+export const removeAccountBankConnection = async (accountId: string) => {
+  await apiClient.delete(`/accounts/${accountId}/bank-account`);
 };
 
 export interface AccountAchievement {

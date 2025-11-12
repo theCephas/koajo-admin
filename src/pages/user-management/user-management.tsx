@@ -1,13 +1,30 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Search } from "lucide-react";
+import { FlagTriangleRight, Loader2, MoreVertical, Search } from "lucide-react";
+import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   useAccountsQuery,
+  useUpdateAccountStatusMutation,
   type AccountsQueryError,
 } from "@/hooks/queries/use-accounts";
 import type { AccountSummary } from "@/services/api";
@@ -16,6 +33,10 @@ import {
   getAccountDisplayName,
 } from "./components/account-avatar";
 import { AccountStatusPill } from "./components/account-status-pill";
+import {
+  AccountFlagsControls,
+  getAccountFlagReasons,
+} from "./components/account-flags-controls";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -81,6 +102,134 @@ const ErrorBanner = ({
   );
 };
 
+const AccountActions = ({
+  account,
+  onViewDetails,
+}: {
+  account: AccountSummary;
+  onViewDetails: () => void;
+}) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const accountName = getAccountDisplayName(account);
+  const isActivating = !account.isActive;
+
+  const { mutate: updateStatus, isPending } = useUpdateAccountStatusMutation(
+    account.id,
+    {
+      onSuccess: (data) => {
+        setConfirmOpen(false);
+        toast.success(
+          `Account ${data.isActive ? "activated" : "disabled"} successfully`,
+        );
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to update account status";
+        toast.error(message);
+      },
+    },
+  );
+
+  const handleToggleStatus = () => {
+    updateStatus({
+      email: account.email,
+      firstName: account.firstName ?? "",
+      lastName: account.lastName ?? "",
+      phoneNumber: account.phoneNumber ?? "",
+      isActive: !account.isActive,
+    });
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+            disabled={isPending}
+          >
+            <MoreVertical className="h-4 w-4 text-[#6B7280]" />
+            <span className="sr-only">More actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[260px] space-y-2">
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              onViewDetails();
+            }}
+          >
+            View details
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <div className="px-2 pb-2">
+            <AccountFlagsControls account={account} />
+          </div>
+          {/* <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              setConfirmOpen(true);
+            }}
+            disabled={isPending}
+          >
+            {account.isActive ? "Disable" : "Set Active"}
+          </DropdownMenuItem> */}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!isPending) {
+            setConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">
+              {isActivating ? "Activate Account" : "Disable Account"}
+            </DialogTitle>
+            <DialogDescription>
+              {isActivating
+                ? `Are you sure you want to activate "${accountName}"? This will restore their access to the platform.`
+                : `Are you sure you want to disable "${accountName}"? This will temporarily block their access to the platform.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleToggleStatus}
+              disabled={isPending}
+              variant={isActivating ? "default" : "destructive"}
+            >
+              {isPending
+                ? isActivating
+                  ? "Activating..."
+                  : "Disabling..."
+                : isActivating
+                  ? "Activate"
+                  : "Disable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 export default function UserManagement() {
   const navigate = useNavigate();
 
@@ -133,17 +282,37 @@ export default function UserManagement() {
         key: "account",
         label: "ACCOUNT",
         width: 280,
-        render: (_, account) => (
-          <div className="flex items-center gap-3">
-            <AccountAvatar account={account} />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-[#111827]">
-                {getAccountDisplayName(account)}
-              </span>
-              <span className="text-xs text-[#6B7280]">{account.email}</span>
+        render: (_, account) => {
+          const flagReasons = getAccountFlagReasons(account);
+
+          return (
+            <div className="flex items-center gap-3">
+              <AccountAvatar account={account} />
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-semibold text-[#111827]">
+                    {getAccountDisplayName(account)}
+                  </span>
+                  {flagReasons.length > 0 && (
+                    <span
+                      className="flex items-center"
+                      title={`Flagged: ${flagReasons.join(", ")}`}
+                    >
+                      <FlagTriangleRight
+                        className="h-3.5 w-3.5 text-amber-500"
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">
+                        Flagged: {flagReasons.join(", ")}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-[#6B7280]">{account.email}</span>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         key: "phoneNumber",
@@ -172,16 +341,13 @@ export default function UserManagement() {
       {
         key: "actions",
         label: "",
-        width: 120,
+        width: 80,
         render: (_, account) => (
           <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/users-management/${account.id}`)}
-            >
-              View details
-            </Button>
+            <AccountActions
+              account={account}
+              onViewDetails={() => navigate(`/users-management/${account.id}`)}
+            />
           </div>
         ),
       },

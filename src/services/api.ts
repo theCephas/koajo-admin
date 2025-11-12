@@ -116,6 +116,13 @@ export interface AccountSummary {
   isActive: boolean;
   emailNotificationsEnabled: boolean;
   transactionNotificationsEnabled: boolean;
+  kycStatus?: string | null;
+  bankAccountLinked?: boolean;
+  requiresFraudReview?: boolean;
+  fraudReviewReason?: string | null;
+  missedPaymentFlag?: boolean;
+  missedPaymentReason?: string | null;
+  flagsUpdatedAt?: string | null;
 }
 
 export interface AccountsResponse {
@@ -200,6 +207,37 @@ export const updateAccountStatus = async ({
   );
 
   return data;
+};
+
+export interface UpdateAccountFlagsPayload {
+  fraudReview?: boolean;
+  missedPayment?: boolean;
+}
+
+export interface UpdateAccountFlagsResponse {
+  requiresFraudReview: boolean;
+  fraudReviewReason: string | null;
+  missedPaymentFlag: boolean;
+  missedPaymentReason: string | null;
+}
+
+export const updateAccountFlags = async ({
+  accountId,
+  payload,
+}: {
+  accountId: string;
+  payload: UpdateAccountFlagsPayload;
+}) => {
+  const { data } = await apiClient.patch<UpdateAccountFlagsResponse>(
+    `/accounts/${accountId}/flags`,
+    payload,
+  );
+
+  return data;
+};
+
+export const removeAccountBankConnection = async (accountId: string) => {
+  await apiClient.delete(`/accounts/${accountId}/bank-account`);
 };
 
 export interface AccountAchievement {

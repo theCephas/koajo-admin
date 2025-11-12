@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, MoreVertical, Search } from "lucide-react";
+import { FlagTriangleRight, Loader2, MoreVertical, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -32,6 +33,10 @@ import {
   getAccountDisplayName,
 } from "./components/account-avatar";
 import { AccountStatusPill } from "./components/account-status-pill";
+import {
+  AccountFlagsControls,
+  getAccountFlagReasons,
+} from "./components/account-flags-controls";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -151,7 +156,7 @@ const AccountActions = ({
             <span className="sr-only">More actions</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-40">
+        <DropdownMenuContent align="end" className="w-[260px] space-y-2">
           <DropdownMenuItem
             className="cursor-pointer"
             onSelect={(e) => {
@@ -161,7 +166,11 @@ const AccountActions = ({
           >
             View details
           </DropdownMenuItem>
-          <DropdownMenuItem
+          <DropdownMenuSeparator />
+          <div className="px-2 pb-2">
+            <AccountFlagsControls account={account} />
+          </div>
+          {/* <DropdownMenuItem
             className="cursor-pointer"
             onSelect={(e) => {
               e.preventDefault();
@@ -170,7 +179,7 @@ const AccountActions = ({
             disabled={isPending}
           >
             {account.isActive ? "Disable" : "Set Active"}
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -273,17 +282,37 @@ export default function UserManagement() {
         key: "account",
         label: "ACCOUNT",
         width: 280,
-        render: (_, account) => (
-          <div className="flex items-center gap-3">
-            <AccountAvatar account={account} />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-[#111827]">
-                {getAccountDisplayName(account)}
-              </span>
-              <span className="text-xs text-[#6B7280]">{account.email}</span>
+        render: (_, account) => {
+          const flagReasons = getAccountFlagReasons(account);
+
+          return (
+            <div className="flex items-center gap-3">
+              <AccountAvatar account={account} />
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-semibold text-[#111827]">
+                    {getAccountDisplayName(account)}
+                  </span>
+                  {flagReasons.length > 0 && (
+                    <span
+                      className="flex items-center"
+                      title={`Flagged: ${flagReasons.join(", ")}`}
+                    >
+                      <FlagTriangleRight
+                        className="h-3.5 w-3.5 text-amber-500"
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">
+                        Flagged: {flagReasons.join(", ")}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-[#6B7280]">{account.email}</span>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         key: "phoneNumber",

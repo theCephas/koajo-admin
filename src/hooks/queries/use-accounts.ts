@@ -13,6 +13,8 @@ import {
   getAccounts,
   updateAccountNotifications,
   updateAccountStatus,
+  updateAccountFlags,
+  removeAccountBankConnection,
   type AccountAchievementsResponse,
   type AccountDetails,
   type AccountsQueryParams,
@@ -21,6 +23,8 @@ import {
   type UpdateAccountNotificationsResponse,
   type UpdateAccountStatusPayload,
   type UpdateAccountStatusResponse,
+  type UpdateAccountFlagsPayload,
+  type UpdateAccountFlagsResponse,
 } from "@/services/api";
 
 export type AccountsQueryError = AxiosError<{ message?: string }>;
@@ -28,6 +32,8 @@ export type AccountQueryError = AxiosError<{ message?: string }>;
 export type AccountAchievementsQueryError = AxiosError<{ message?: string }>;
 export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
 export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
+export type UpdateAccountFlagsError = AxiosError<{ message?: string }>;
+export type RemoveAccountBankConnectionError = AxiosError<{ message?: string }>;
 
 const ACCOUNTS_QUERY_KEY = ["accounts"] as const;
 
@@ -212,6 +218,67 @@ export const useUpdateAccountStatusMutation = (
       return options?.onSuccess?.(data, variables, onMutateResult, context);
     },
 
+    ...options,
+  });
+};
+
+export const useUpdateAccountFlagsMutation = (
+  accountId: string,
+  options?: UseMutationOptions<
+    UpdateAccountFlagsResponse,
+    UpdateAccountFlagsError,
+    UpdateAccountFlagsPayload,
+    unknown
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    UpdateAccountFlagsResponse,
+    UpdateAccountFlagsError,
+    UpdateAccountFlagsPayload,
+    unknown
+  >({
+    mutationFn: (payload) =>
+      updateAccountFlags({
+        accountId,
+        payload,
+      }),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      // Invalidate queries to refetch fresh data from the backend
+      void queryClient.invalidateQueries({
+        queryKey: accountQueryKey(accountId),
+      });
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+
+    ...options,
+  });
+};
+
+export const useRemoveAccountBankConnectionMutation = (
+  accountId: string,
+  options?: UseMutationOptions<
+    void,
+    RemoveAccountBankConnectionError,
+    void,
+    unknown
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, RemoveAccountBankConnectionError, void, unknown>({
+    mutationFn: () => removeAccountBankConnection(accountId),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      void queryClient.invalidateQueries({
+        queryKey: accountQueryKey(accountId),
+      });
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
     ...options,
   });
 };

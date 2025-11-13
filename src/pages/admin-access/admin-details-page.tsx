@@ -11,6 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
   useAdminUserQuery,
   useDeleteAdminUserMutation,
   useUpdateAdminUserMutation,
@@ -74,6 +81,10 @@ export default function AdminDetailsPage() {
   const [isActive, setIsActive] = React.useState(true);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [confirmStatusOpen, setConfirmStatusOpen] = React.useState(false);
+  const [pendingStatusValue, setPendingStatusValue] = React.useState<
+    boolean | null
+  >(null);
 
   React.useEffect(() => {
     if (!admin) return;
@@ -89,9 +100,13 @@ export default function AdminDetailsPage() {
       onSuccess: () => {
         toast.success("Administrator updated");
         setFormError(null);
+        setConfirmStatusOpen(false);
+        setPendingStatusValue(null);
       },
       onError: (mutationError) => {
         setFormError(updateErrorMessage(mutationError));
+        setConfirmStatusOpen(false);
+        setPendingStatusValue(null);
       },
     });
 
@@ -104,6 +119,52 @@ export default function AdminDetailsPage() {
         toast.error(deleteErrorMessage(mutationError));
       },
     });
+
+  const handleStatusToggle = (checked: boolean) => {
+    setIsActive(checked);
+    setPendingStatusValue(checked);
+    setConfirmStatusOpen(true);
+  };
+
+  const confirmStatusChange = () => {
+    if (pendingStatusValue === null || !adminId) return;
+
+    const trimmedEmail = email.trim();
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+
+    if (!trimmedEmail) {
+      setFormError("Email is required.");
+      setConfirmStatusOpen(false);
+      setPendingStatusValue(null);
+      return;
+    }
+    if (!trimmedFirst) {
+      setFormError("First name is required.");
+      setConfirmStatusOpen(false);
+      setPendingStatusValue(null);
+      return;
+    }
+    if (!trimmedLast) {
+      setFormError("Last name is required.");
+      setConfirmStatusOpen(false);
+      setPendingStatusValue(null);
+      return;
+    }
+
+    setFormError(null);
+
+    updateAdmin({
+      adminId,
+      payload: {
+        email: trimmedEmail,
+        firstName: trimmedFirst,
+        lastName: trimmedLast,
+        phoneNumber: phoneNumber.trim(),
+        isActive: pendingStatusValue,
+      },
+    });
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -316,7 +377,7 @@ export default function AdminDetailsPage() {
               </span>
               <Switch
                 checked={isActive}
-                onCheckedChange={(checked) => setIsActive(checked)}
+                onCheckedChange={handleStatusToggle}
                 disabled={isSaving}
               />
             </div>
@@ -483,6 +544,60 @@ export default function AdminDetailsPage() {
         confirmLabel="Delete admin"
         onConfirm={handleDelete}
       />
+
+      <Dialog
+        open={confirmStatusOpen}
+        onOpenChange={(v) => {
+          if (!isSaving) {
+            setConfirmStatusOpen(v);
+            if (!v) {
+              setPendingStatusValue(null);
+              // Revert the switch to original value when dialog is closed without confirming
+              if (admin) {
+                setIsActive(Boolean(admin.isActive));
+              }
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[480px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">
+              {pendingStatusValue
+                ? "Activate administrator"
+                : "Deactivate administrator"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-[#6B7280]">
+              {pendingStatusValue
+                ? `Are you sure you want to activate ${admin.email}? They will regain access to the dashboard.`
+                : `Are you sure you want to deactivate ${admin.email}? They will immediately lose access to the dashboard.`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
+              <DialogClose asChild>
+                <Button variant="outline" disabled={isSaving}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                className="rounded-xl"
+                disabled={isSaving}
+                onClick={confirmStatusChange}
+                variant={pendingStatusValue ? "default" : "destructive"}
+              >
+                {isSaving
+                  ? "Updating..."
+                  : pendingStatusValue
+                    ? "Activate"
+                    : "Deactivate"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

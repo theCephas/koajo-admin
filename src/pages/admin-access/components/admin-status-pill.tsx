@@ -9,7 +9,7 @@ export function AdminStatusPill({ isActive }: { isActive: boolean }) {
   const key = isActive ? "active" : "inactive";
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${STATUS_STYLES[key]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide w-fit ${STATUS_STYLES[key]}`}
     >
       {isActive ? "Active" : "Inactive"}
     </span>

@@ -12,6 +12,7 @@ import {
   type AdminUsersQueryError,
   useReplaceAdminRolesMutation,
   useAdjustAdminPermissionsMutation,
+  useUpdateAdminUserMutation,
 } from "@/hooks/queries/use-admin-users";
 import { useRolesQuery, usePermissionsQuery } from "@/hooks/queries/use-roles";
 import type { AdminUserSummary } from "@/services/api";
@@ -209,6 +210,11 @@ export default function AdminAccessPage() {
   const [permsOpen, setPermsOpen] = React.useState(false);
   const [activeAdminId, setActiveAdminId] = React.useState<string | null>(null);
   const [activeAdminEmail, setActiveAdminEmail] = React.useState<string>("");
+  const [confirmStatusOpen, setConfirmStatusOpen] = React.useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = React.useState<{
+    admin: AdminUserSummary;
+    action: "activate" | "deactivate";
+  } | null>(null);
 
   const [selectedRoleIds, setSelectedRoleIds] = React.useState<string[]>([]);
   const [allowCodes, setAllowCodes] = React.useState<string[]>([]);
@@ -237,6 +243,21 @@ export default function AdminAccessPage() {
           e.response?.data?.message ??
             e.message ??
             "Unable to update permissions",
+        ),
+    });
+
+  const { mutate: updateAdminStatus, isPending: updatingStatus } =
+    useUpdateAdminUserMutation({
+      onSuccess: () => {
+        toast.success("Admin status updated");
+        setConfirmStatusOpen(false);
+        setPendingStatusChange(null);
+      },
+      onError: (e) =>
+        toast.error(
+          e.response?.data?.message ??
+            e.message ??
+            "Unable to update admin status",
         ),
     });
 
@@ -276,6 +297,32 @@ export default function AdminAccessPage() {
     },
     [],
   );
+
+  const handleActivateAdmin = React.useCallback((admin: AdminUserSummary) => {
+    setPendingStatusChange({ admin, action: "activate" });
+    setConfirmStatusOpen(true);
+  }, []);
+
+  const handleDeactivateAdmin = React.useCallback((admin: AdminUserSummary) => {
+    setPendingStatusChange({ admin, action: "deactivate" });
+    setConfirmStatusOpen(true);
+  }, []);
+
+  const confirmStatusChange = React.useCallback(() => {
+    if (!pendingStatusChange) return;
+
+    const { admin, action } = pendingStatusChange;
+    updateAdminStatus({
+      adminId: admin.id,
+      payload: {
+        email: admin.email,
+        firstName: admin.firstName ?? "",
+        lastName: admin.lastName ?? "",
+        phoneNumber: admin.phoneNumber ?? "",
+        isActive: action === "activate",
+      },
+    });
+  }, [pendingStatusChange, updateAdminStatus]);
 
   const columns = React.useMemo<Column<AdminUserSummary>[]>(
     () => [
@@ -351,24 +398,59 @@ export default function AdminAccessPage() {
           <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={updatingStatus}
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuItem onSelect={() => openRolesDialog(row)}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => openRolesDialog(row)}
+                >
                   Replace roles
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => openPermissionsDialog(row)}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => openPermissionsDialog(row)}
+                >
                   Adjust permissions
                 </DropdownMenuItem>
+                {row.isActive ? (
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => handleDeactivateAdmin(row)}
+                    disabled={updatingStatus}
+                  >
+                    Deactivate
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => handleActivateAdmin(row)}
+                    disabled={updatingStatus}
+                  >
+                    Activate
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         ),
       },
     ],
-    [navigate, openRolesDialog, openPermissionsDialog],
+    [
+      navigate,
+      openRolesDialog,
+      openPermissionsDialog,
+      handleActivateAdmin,
+      handleDeactivateAdmin,
+      updatingStatus,
+    ],
   );
 
   const totalAdmins = filteredAdmins.length;
@@ -545,6 +627,57 @@ export default function AdminAccessPage() {
             >
               {savingPerms ? "Saving..." : "Save changes"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirmStatusOpen}
+        onOpenChange={(v) => !updatingStatus && setConfirmStatusOpen(v)}
+      >
+        <DialogContent className="sm:max-w-[480px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">
+              {pendingStatusChange?.action === "activate"
+                ? "Activate administrator"
+                : "Deactivate administrator"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-[#6B7280]">
+              {pendingStatusChange?.action === "activate"
+                ? `Are you sure you want to activate ${
+                    pendingStatusChange.admin.email
+                  }? They will regain access to the dashboard.`
+                : `Are you sure you want to deactivate ${
+                    pendingStatusChange?.admin.email
+                  }? They will immediately lose access to the dashboard.`}
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
+              <DialogClose asChild>
+                <Button variant="outline" disabled={updatingStatus}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                className="rounded-xl"
+                disabled={updatingStatus}
+                onClick={confirmStatusChange}
+                variant={
+                  pendingStatusChange?.action === "deactivate"
+                    ? "destructive"
+                    : "default"
+                }
+              >
+                {updatingStatus
+                  ? "Updating..."
+                  : pendingStatusChange?.action === "activate"
+                    ? "Activate"
+                    : "Deactivate"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

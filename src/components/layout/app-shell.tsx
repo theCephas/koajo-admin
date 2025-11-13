@@ -16,7 +16,24 @@ import { cn } from "@/lib/utils";
 import KoajoIcon from "../../../public/koajo.png";
 import ScrollToTop from "../ui/scroll-to-top";
 import Avatar from "../../../public/avatar.svg?url";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/stores/auth-store";
+import { useState } from "react";
 
 const navigation = [
   { label: "Dashboard", to: "/", icon: HiOutlineViewGrid },
@@ -65,6 +82,19 @@ const navigation = [
 
 export function AppShell() {
   const navigate = useNavigate();
+  const signOut = useAuthStore((state) => state.signOut);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    signOut();
+    setLogoutDialogOpen(false);
+    void navigate("/login");
+  };
+
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <ScrollToTop smooth={true} />
@@ -140,16 +170,33 @@ export function AppShell() {
           <span className="text-lg font-semibold tracking-tight">Koajo</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <div
-            onClick={() => void navigate("/profile")}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <img src={Avatar} alt="User Avatar" />
-            <div className="flex items-center gap-2 ">
-              <p className="text-sm font-medium">admin@koajo.com</p>
-              <ChevronDown className="h-3 w-3 text-gray-500" />
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer">
+                <img src={Avatar} alt="User Avatar" />
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">admin@koajo.com</p>
+                  <ChevronDown className="h-3 w-3 text-gray-500" />
+                </div>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onSelect={() => void navigate("/profile")}
+              >
+                <User className="mr-2 h-4 w-4" />
+                View Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer text-red-600 focus:text-red-600"
+                onSelect={handleLogoutClick}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -171,6 +218,34 @@ export function AppShell() {
           </div>
         </div>
       </main>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to logout? You will be redirected to the
+              login page.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setLogoutDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleLogoutConfirm()}
+              className="rounded-xl"
+            >
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

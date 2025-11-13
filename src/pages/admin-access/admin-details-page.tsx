@@ -317,7 +317,7 @@ export default function AdminDetailsPage() {
               <Switch
                 checked={isActive}
                 onCheckedChange={(checked) => setIsActive(checked)}
-                disabled={true}
+                disabled={isSaving}
               />
             </div>
           </div>

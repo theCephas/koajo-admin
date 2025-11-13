@@ -10,8 +10,6 @@ import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -102,13 +100,7 @@ const ErrorBanner = ({
   );
 };
 
-const AccountActions = ({
-  account,
-  onViewDetails,
-}: {
-  account: AccountSummary;
-  onViewDetails: () => void;
-}) => {
+const AccountActions = ({ account }: { account: AccountSummary }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const accountName = getAccountDisplayName(account);
   const isActivating = !account.isActive;
@@ -157,16 +149,6 @@ const AccountActions = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[260px] space-y-2">
-          <DropdownMenuItem
-            className="cursor-pointer"
-            onSelect={(e) => {
-              e.preventDefault();
-              onViewDetails();
-            }}
-          >
-            View details
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <div className="px-2 pb-2">
             <AccountFlagsControls account={account} />
           </div>
@@ -339,15 +321,28 @@ export default function UserManagement() {
         render: (_, account) => <NotificationsSummary account={account} />,
       },
       {
-        key: "actions",
+        key: "viewDetails",
         label: "",
-        width: 80,
+        width: 140,
         render: (_, account) => (
           <div className="flex justify-end">
-            <AccountActions
-              account={account}
-              onViewDetails={() => navigate(`/users-management/${account.id}`)}
-            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/users-management/${account.id}`)}
+            >
+              View details
+            </Button>
+          </div>
+        ),
+      },
+      {
+        key: "rowActions",
+        label: "",
+        width: 64,
+        render: (_, account) => (
+          <div className="flex justify-end">
+            <AccountActions account={account} />
           </div>
         ),
       },

@@ -142,7 +142,6 @@ export const useAccountCurrentPodsQuery = (
     queryKey: accountCurrentPodsQueryKey(accountId),
     queryFn: () => getAccountCurrentPods(accountId),
     enabled: Boolean(accountId),
-    staleTime: 2 * 60 * 1000,
     ...options,
   });
 

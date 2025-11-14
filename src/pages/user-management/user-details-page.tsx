@@ -202,6 +202,9 @@ const AchievementsSection = ({
   data,
   isLoading,
   error,
+  podsCount,
+  isPodsLoading,
+  onViewPods,
 }: {
   data:
     | {
@@ -213,6 +216,9 @@ const AchievementsSection = ({
     | undefined;
   isLoading: boolean;
   error: AccountAchievementsQueryError | null;
+  podsCount: number;
+  isPodsLoading: boolean;
+  onViewPods: () => void;
 }) => {
   if (isLoading) {
     return (
@@ -243,7 +249,7 @@ const AchievementsSection = ({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<Trophy className="h-4 w-4 text-emerald-600" />}
           label="Total earned"
@@ -262,7 +268,15 @@ const AchievementsSection = ({
           value={`${earnedAchievements.length}`}
           tone="blue"
         />
-        {/*  */}
+        <StatCard
+          icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
+          label="Active Pods"
+          value={isPodsLoading ? "..." : `${podsCount}`}
+          tone="blue"
+          showButton={podsCount > 0}
+          buttonText="View Pods"
+          btnClick={onViewPods}
+        />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -356,11 +370,17 @@ const StatCard = ({
   label,
   value,
   tone,
+  showButton,
+  buttonText,
+  btnClick,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   tone: "emerald" | "amber" | "blue";
+  showButton?: boolean;
+  buttonText?: string;
+  btnClick?: () => void;
 }) => {
   return (
     <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
@@ -373,6 +393,13 @@ const StatCard = ({
         {label}
       </div>
       <div className="text-xl font-semibold text-[#111827]">{value}</div>
+      {showButton && (
+        <div className="w-full flex justify-end">
+          <Button variant="outline" onClick={btnClick}>
+            {buttonText}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -951,49 +978,10 @@ export default function UserManagementDetailsPage() {
                 data={achievements}
                 isLoading={isAchievementsLoading}
                 error={achievementsError ?? null}
+                podsCount={podsCount}
+                isPodsLoading={isPodsLoading}
+                onViewPods={() => setPodsModalOpen(true)}
               />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h3 className="text-base font-semibold text-[#111827]">
-                  User Pods
-                </h3>
-                <p className="text-xs text-[#6B7280]">
-                  Pods this user is currently participating in.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <div className="grid gap-4 md:grid-cols-4">
-                <StatCard
-                  icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
-                  label="Active Pods"
-                  value={isPodsLoading ? "..." : `${podsCount}`}
-                  tone="blue"
-                />
-                {podsCount > 0 && (
-                  <div className="flex items-center md:col-span-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setPodsModalOpen(true)}
-                    >
-                      View Pods
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {podsError && (
-                <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
-                  {podsError.response?.data?.message ??
-                    podsError.message ??
-                    "Failed to load pods"}
-                </div>
-              )}
             </div>
           </div>
         </div>

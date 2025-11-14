@@ -405,6 +405,7 @@ export interface PodMembership {
   accountEmail?: string;
   joinedAt?: string;
   status?: string;
+  account?: AccountSummary;
   [key: string]: unknown;
 }
 

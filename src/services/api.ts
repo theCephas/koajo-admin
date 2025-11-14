@@ -297,7 +297,7 @@ export type AccountCurrentPodsResponse = AccountCurrentPod[];
 
 export const getAccountCurrentPods = async (accountId: string) => {
   const { data } = await apiClient.get<AccountCurrentPodsResponse>(
-    `/v1/admin/accounts/${accountId}/pods/current`,
+    `accounts/${accountId}/pods/current`,
   );
 
   return data;

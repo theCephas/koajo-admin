@@ -262,6 +262,7 @@ const AchievementsSection = ({
           value={`${earnedAchievements.length}`}
           tone="blue"
         />
+        {/*  */}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -937,47 +938,6 @@ export default function UserManagementDetailsPage() {
           </div>
 
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h3 className="text-base font-semibold text-[#111827]">
-                  User Pods
-                </h3>
-                <p className="text-xs text-[#6B7280]">
-                  Pods this user is currently participating in.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <StatCard
-                icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
-                label="Active Pods"
-                value={isPodsLoading ? "..." : `${podsCount}`}
-                tone="blue"
-              />
-              {podsCount > 0 && (
-                <div className="flex items-center md:col-span-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPodsModalOpen(true)}
-                    className="w-full md:w-auto"
-                  >
-                    View Pods
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {podsError && (
-              <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
-                {podsError.response?.data?.message ??
-                  podsError.message ??
-                  "Failed to load pods"}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
             <h3 className="text-base font-semibold text-[#111827]">
               Achievements
             </h3>
@@ -992,6 +952,48 @@ export default function UserManagementDetailsPage() {
                 isLoading={isAchievementsLoading}
                 error={achievementsError ?? null}
               />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-[#111827]">
+                  User Pods
+                </h3>
+                <p className="text-xs text-[#6B7280]">
+                  Pods this user is currently participating in.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <div className="grid gap-4 md:grid-cols-4">
+                <StatCard
+                  icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
+                  label="Active Pods"
+                  value={isPodsLoading ? "..." : `${podsCount}`}
+                  tone="blue"
+                />
+                {podsCount > 0 && (
+                  <div className="flex items-center md:col-span-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setPodsModalOpen(true)}
+                    >
+                      View Pods
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {podsError && (
+                <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+                  {podsError.response?.data?.message ??
+                    podsError.message ??
+                    "Failed to load pods"}
+                </div>
+              )}
             </div>
           </div>
         </div>

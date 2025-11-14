@@ -15,6 +15,7 @@ import {
   updateAccountStatus,
   updateAccountFlags,
   removeAccountBankConnection,
+  deleteAccount,
   type AccountAchievementsResponse,
   type AccountDetails,
   type AccountsQueryParams,
@@ -34,6 +35,7 @@ export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
 export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
 export type UpdateAccountFlagsError = AxiosError<{ message?: string }>;
 export type RemoveAccountBankConnectionError = AxiosError<{ message?: string }>;
+export type DeleteAccountError = AxiosError<{ message?: string }>;
 
 const ACCOUNTS_QUERY_KEY = ["accounts"] as const;
 
@@ -275,6 +277,23 @@ export const useRemoveAccountBankConnectionMutation = (
       void queryClient.invalidateQueries({
         queryKey: accountQueryKey(accountId),
       });
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+    ...options,
+  });
+};
+
+export const useDeleteAccountMutation = (
+  accountId: string,
+  options?: UseMutationOptions<void, DeleteAccountError, void, unknown>,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, DeleteAccountError, void, unknown>({
+    mutationFn: () => deleteAccount(accountId),
+    onSuccess: (data, variables, onMutateResult, context) => {
       void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
 
       return options?.onSuccess?.(data, variables, onMutateResult, context);

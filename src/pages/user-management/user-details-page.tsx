@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   FlagTriangleRight,
@@ -10,6 +10,7 @@ import {
   MoreVertical,
   Phone,
   Target,
+  Trash2,
   Trophy,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ import {
   useAccountQuery,
   useUpdateAccountNotificationsMutation,
   useRemoveAccountBankConnectionMutation,
+  useDeleteAccountMutation,
   type AccountAchievementsQueryError,
   type AccountQueryError,
   type UpdateAccountNotificationsError,
@@ -456,7 +458,10 @@ const AccountOverview = ({ account }: { account: AccountDetails }) => {
 };
 
 const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
+  const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const accountName = getAccountDisplayName(account);
 
   const { mutate: removeBankConnection, isPending } =
     useRemoveAccountBankConnectionMutation(account.id, {
@@ -473,6 +478,29 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
       },
     });
 
+  const { mutate: deleteAccount, isPending: isDeleting } =
+    useDeleteAccountMutation(account.id, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false);
+        toast.success("User deleted successfully");
+        // Navigate after a short delay to allow the toast to be visible
+        setTimeout(() => {
+          void navigate("/users-management");
+        }, 100);
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to delete user";
+        toast.error(message);
+      },
+    });
+
+  const handleDeleteUser = () => {
+    deleteAccount();
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -481,6 +509,7 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
             variant="ghost"
             size="icon"
             className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+            disabled={isPending || isDeleting}
           >
             <MoreVertical className="h-4 w-4 text-[#6B7280]" />
             <span className="sr-only">More actions</span>
@@ -505,6 +534,18 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
               </DropdownMenuItem>
             </>
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer text-rose-600 focus:text-rose-600"
+            onSelect={(event) => {
+              event.preventDefault();
+              setDeleteConfirmOpen(true);
+            }}
+            disabled={isDeleting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            Delete User
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -522,7 +563,7 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
               Remove bank connection
             </DialogTitle>
             <DialogDescription>
-              This will disconnect the user’s linked bank account. They will
+              This will disconnect the user's linked bank account. They will
               need to reconnect before making future transfers. Are you sure you
               want to continue?
             </DialogDescription>
@@ -541,6 +582,42 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
               disabled={isPending}
             >
               {isPending ? "Removing…" : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setDeleteConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{accountName}"? This action
+              cannot be undone and will permanently remove the user and all
+              their associated data from the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

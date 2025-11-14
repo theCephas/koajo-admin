@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FlagTriangleRight, Loader2, MoreVertical, Search } from "lucide-react";
+import {
+  FlagTriangleRight,
+  Loader2,
+  MoreVertical,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
@@ -10,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -23,6 +31,7 @@ import {
 import {
   useAccountsQuery,
   useUpdateAccountStatusMutation,
+  useDeleteAccountMutation,
   type AccountsQueryError,
 } from "@/hooks/queries/use-accounts";
 import type { AccountSummary } from "@/services/api";
@@ -102,6 +111,7 @@ const ErrorBanner = ({
 
 const AccountActions = ({ account }: { account: AccountSummary }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const accountName = getAccountDisplayName(account);
   const isActivating = !account.isActive;
 
@@ -124,6 +134,21 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
     },
   );
 
+  const { mutate: deleteAccount, isPending: isDeleting } =
+    useDeleteAccountMutation(account.id, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false);
+        toast.success("User deleted successfully");
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to delete user";
+        toast.error(message);
+      },
+    });
+
   const handleToggleStatus = () => {
     updateStatus({
       email: account.email,
@@ -134,6 +159,10 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
     });
   };
 
+  const handleDeleteUser = () => {
+    deleteAccount();
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -142,7 +171,7 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
             variant="ghost"
             size="icon"
             className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
-            disabled={isPending}
+            disabled={isPending || isDeleting}
           >
             <MoreVertical className="h-4 w-4 text-[#6B7280]" />
             <span className="sr-only">More actions</span>
@@ -152,16 +181,18 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
           <div className="px-2 pb-2">
             <AccountFlagsControls account={account} />
           </div>
-          {/* <DropdownMenuItem
-            className="cursor-pointer"
-            onSelect={(e) => {
-              e.preventDefault();
-              setConfirmOpen(true);
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer text-rose-600 focus:text-rose-600"
+            onSelect={(event) => {
+              event.preventDefault();
+              setDeleteConfirmOpen(true);
             }}
-            disabled={isPending}
+            disabled={isDeleting}
           >
-            {account.isActive ? "Disable" : "Set Active"}
-          </DropdownMenuItem> */}
+            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            Delete User
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -204,6 +235,42 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
                 : isActivating
                   ? "Activate"
                   : "Disable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setDeleteConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{accountName}"? This action
+              cannot be undone and will permanently remove the user and all
+              their associated data from the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

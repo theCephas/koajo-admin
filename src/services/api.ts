@@ -240,6 +240,12 @@ export const removeAccountBankConnection = async (accountId: string) => {
   await apiClient.delete(`/accounts/${accountId}/bank-account`);
 };
 
+export const deleteAccount = async (accountId: string) => {
+  await apiClient.delete(`/v1/auth/account`, {
+    params: { accountId },
+  });
+};
+
 export interface AccountAchievement {
   code: string;
   name: string;

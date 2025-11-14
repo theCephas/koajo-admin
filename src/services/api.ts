@@ -270,6 +270,39 @@ export const getAccountAchievements = async (accountId: string) => {
   return data;
 };
 
+export interface AccountCurrentPod {
+  membershipId: string;
+  podId: string;
+  planCode: string;
+  name: string | null;
+  amount: number;
+  lifecycleWeeks: number;
+  maxMembers: number;
+  status: string;
+  podType: string;
+  cadence: string;
+  joinOrder: number;
+  finalOrder: number | null;
+  payoutDate: string | null;
+  paidOut: boolean;
+  joinedAt: string;
+  totalContributed: string;
+  goalType: string;
+  goalNote: string | null;
+  completedAt: string | null;
+  payoutAmount: string | null;
+}
+
+export type AccountCurrentPodsResponse = AccountCurrentPod[];
+
+export const getAccountCurrentPods = async (accountId: string) => {
+  const { data } = await apiClient.get<AccountCurrentPodsResponse>(
+    `/v1/admin/accounts/${accountId}/pods/current`,
+  );
+
+  return data;
+};
+
 export type AnnouncementChannel = "email" | "in-app";
 export type AnnouncementSeverity =
   | "success"

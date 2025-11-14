@@ -11,12 +11,14 @@ import {
   getAccountAchievements,
   getAccountById,
   getAccounts,
+  getAccountCurrentPods,
   updateAccountNotifications,
   updateAccountStatus,
   updateAccountFlags,
   removeAccountBankConnection,
   deleteAccount,
   type AccountAchievementsResponse,
+  type AccountCurrentPodsResponse,
   type AccountDetails,
   type AccountsQueryParams,
   type AccountsResponse,
@@ -31,6 +33,7 @@ import {
 export type AccountsQueryError = AxiosError<{ message?: string }>;
 export type AccountQueryError = AxiosError<{ message?: string }>;
 export type AccountAchievementsQueryError = AxiosError<{ message?: string }>;
+export type AccountCurrentPodsQueryError = AxiosError<{ message?: string }>;
 export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
 export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
 export type UpdateAccountFlagsError = AxiosError<{ message?: string }>;
@@ -115,6 +118,31 @@ export const useAccountAchievementsQuery = (
     queryFn: () => getAccountAchievements(accountId),
     enabled: Boolean(accountId),
     staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+
+export const accountCurrentPodsQueryKey = (accountId: string) =>
+  ["account-current-pods", accountId] as const;
+
+export const useAccountCurrentPodsQuery = (
+  accountId: string,
+  options?: UseQueryOptions<
+    AccountCurrentPodsResponse,
+    AccountCurrentPodsQueryError,
+    AccountCurrentPodsResponse,
+    ReturnType<typeof accountCurrentPodsQueryKey>
+  >,
+) =>
+  useQuery<
+    AccountCurrentPodsResponse,
+    AccountCurrentPodsQueryError,
+    AccountCurrentPodsResponse,
+    ReturnType<typeof accountCurrentPodsQueryKey>
+  >({
+    queryKey: accountCurrentPodsQueryKey(accountId),
+    queryFn: () => getAccountCurrentPods(accountId),
+    enabled: Boolean(accountId),
+    staleTime: 2 * 60 * 1000,
     ...options,
   });
 

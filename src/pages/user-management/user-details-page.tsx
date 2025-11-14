@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  CircleDollarSign,
   FlagTriangleRight,
   Link2Off,
   Loader2,
@@ -39,15 +40,21 @@ import {
 import { AccountStatusPill } from "./components/account-status-pill";
 import {
   useAccountAchievementsQuery,
+  useAccountCurrentPodsQuery,
   useAccountQuery,
   useUpdateAccountNotificationsMutation,
   useRemoveAccountBankConnectionMutation,
   useDeleteAccountMutation,
   type AccountAchievementsQueryError,
+  type AccountCurrentPodsQueryError,
   type AccountQueryError,
   type UpdateAccountNotificationsError,
 } from "@/hooks/queries/use-accounts";
-import type { AccountAchievement, AccountDetails } from "@/services/api";
+import type {
+  AccountAchievement,
+  AccountCurrentPod,
+  AccountDetails,
+} from "@/services/api";
 import {
   AccountFlagsControls,
   getAccountFlagReasons,
@@ -626,9 +633,160 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
   );
 };
 
+const UserPodsModal = ({
+  open,
+  onOpenChange,
+  pods,
+  isLoading,
+  error,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pods: AccountCurrentPod[];
+  isLoading: boolean;
+  error: AccountCurrentPodsQueryError | null;
+}) => {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+    }).format(value);
+
+  const formatDate = (isoString?: string | null) => {
+    if (!isoString) return "—";
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(date);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl rounded-2xl p-6">
+        <DialogHeader>
+          <DialogTitle className="text-[18px]">User Pods</DialogTitle>
+          <DialogDescription>
+            View all pods this user is currently participating in.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-4 max-h-[500px] overflow-y-auto">
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#6B7280]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading pods…
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+              {error.response?.data?.message ??
+                error.message ??
+                "Failed to load pods"}
+            </div>
+          )}
+
+          {!isLoading && !error && pods.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-8 text-center">
+              <div className="text-sm font-medium text-[#111827]">
+                No active pods
+              </div>
+              <div className="text-xs text-[#6B7280]">
+                This user is not currently participating in any pods.
+              </div>
+            </div>
+          )}
+
+          {!isLoading && !error && pods.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#E5E7EB]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Pod
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Joined
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Contributed
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pods.map((pod) => (
+                    <tr
+                      key={pod.membershipId}
+                      className="border-b border-[#E5E7EB] hover:bg-[#F9FAFB]"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <Link
+                            to={`/pods-management/${pod.podId}`}
+                            className="text-sm font-semibold text-[#111827] hover:underline"
+                          >
+                            {pod.name ?? pod.planCode}
+                          </Link>
+                          <span className="text-xs text-[#6B7280]">
+                            {pod.lifecycleWeeks} weeks • {pod.maxMembers}{" "}
+                            members
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#374151]">
+                        {formatCurrency(pod.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            pod.status === "active"
+                              ? "bg-emerald-50 text-emerald-600"
+                              : pod.status === "pending"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-gray-50 text-gray-600"
+                          }`}
+                        >
+                          {pod.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#6B7280]">
+                        {formatDate(pod.joinedAt)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-[#111827]">
+                        ${pod.totalContributed}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function UserManagementDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const accountId = id ?? "";
+  const [podsModalOpen, setPodsModalOpen] = useState(false);
 
   const {
     data: account,
@@ -644,12 +802,19 @@ export default function UserManagementDetailsPage() {
   } = useAccountAchievementsQuery(accountId);
 
   const {
+    data: pods,
+    isLoading: isPodsLoading,
+    error: podsError,
+  } = useAccountCurrentPodsQuery(accountId);
+
+  const {
     mutate: updateNotificationPreferences,
     isPending: isUpdatingNotifications,
     error: updateNotificationsError,
   } = useUpdateAccountNotificationsMutation(accountId);
 
   const pendingNotificationError = updateNotificationsError ?? null;
+  const podsCount = pods?.length ?? 0;
 
   const breadcrumbLabel = useMemo(() => {
     if (account) return getAccountDisplayName(account);
@@ -772,6 +937,47 @@ export default function UserManagementDetailsPage() {
           </div>
 
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold text-[#111827]">
+                  User Pods
+                </h3>
+                <p className="text-xs text-[#6B7280]">
+                  Pods this user is currently participating in.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <StatCard
+                icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
+                label="Active Pods"
+                value={isPodsLoading ? "..." : `${podsCount}`}
+                tone="blue"
+              />
+              {podsCount > 0 && (
+                <div className="flex items-center md:col-span-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPodsModalOpen(true)}
+                    className="w-full md:w-auto"
+                  >
+                    View Pods
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {podsError && (
+              <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+                {podsError.response?.data?.message ??
+                  podsError.message ??
+                  "Failed to load pods"}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
             <h3 className="text-base font-semibold text-[#111827]">
               Achievements
             </h3>
@@ -790,6 +996,14 @@ export default function UserManagementDetailsPage() {
           </div>
         </div>
       )}
+
+      <UserPodsModal
+        open={podsModalOpen}
+        onOpenChange={setPodsModalOpen}
+        pods={pods ?? []}
+        isLoading={isPodsLoading}
+        error={podsError ?? null}
+      />
     </section>
   );
 }

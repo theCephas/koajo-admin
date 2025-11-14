@@ -11,11 +11,14 @@ import {
   getAccountAchievements,
   getAccountById,
   getAccounts,
+  getAccountCurrentPods,
   updateAccountNotifications,
   updateAccountStatus,
   updateAccountFlags,
   removeAccountBankConnection,
+  deleteAccount,
   type AccountAchievementsResponse,
+  type AccountCurrentPodsResponse,
   type AccountDetails,
   type AccountsQueryParams,
   type AccountsResponse,
@@ -30,10 +33,12 @@ import {
 export type AccountsQueryError = AxiosError<{ message?: string }>;
 export type AccountQueryError = AxiosError<{ message?: string }>;
 export type AccountAchievementsQueryError = AxiosError<{ message?: string }>;
+export type AccountCurrentPodsQueryError = AxiosError<{ message?: string }>;
 export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
 export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
 export type UpdateAccountFlagsError = AxiosError<{ message?: string }>;
 export type RemoveAccountBankConnectionError = AxiosError<{ message?: string }>;
+export type DeleteAccountError = AxiosError<{ message?: string }>;
 
 const ACCOUNTS_QUERY_KEY = ["accounts"] as const;
 
@@ -113,6 +118,30 @@ export const useAccountAchievementsQuery = (
     queryFn: () => getAccountAchievements(accountId),
     enabled: Boolean(accountId),
     staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+
+export const accountCurrentPodsQueryKey = (accountId: string) =>
+  ["account-current-pods", accountId] as const;
+
+export const useAccountCurrentPodsQuery = (
+  accountId: string,
+  options?: UseQueryOptions<
+    AccountCurrentPodsResponse,
+    AccountCurrentPodsQueryError,
+    AccountCurrentPodsResponse,
+    ReturnType<typeof accountCurrentPodsQueryKey>
+  >,
+) =>
+  useQuery<
+    AccountCurrentPodsResponse,
+    AccountCurrentPodsQueryError,
+    AccountCurrentPodsResponse,
+    ReturnType<typeof accountCurrentPodsQueryKey>
+  >({
+    queryKey: accountCurrentPodsQueryKey(accountId),
+    queryFn: () => getAccountCurrentPods(accountId),
+    enabled: Boolean(accountId),
     ...options,
   });
 
@@ -275,6 +304,23 @@ export const useRemoveAccountBankConnectionMutation = (
       void queryClient.invalidateQueries({
         queryKey: accountQueryKey(accountId),
       });
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+    ...options,
+  });
+};
+
+export const useDeleteAccountMutation = (
+  accountId: string,
+  options?: UseMutationOptions<void, DeleteAccountError, void, unknown>,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, DeleteAccountError, void, unknown>({
+    mutationFn: () => deleteAccount(accountId),
+    onSuccess: (data, variables, onMutateResult, context) => {
       void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
 
       return options?.onSuccess?.(data, variables, onMutateResult, context);

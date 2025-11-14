@@ -240,6 +240,12 @@ export const removeAccountBankConnection = async (accountId: string) => {
   await apiClient.delete(`/accounts/${accountId}/bank-account`);
 };
 
+export const deleteAccount = async (accountId: string) => {
+  await apiClient.delete(`/v1/auth/account`, {
+    params: { accountId },
+  });
+};
+
 export interface AccountAchievement {
   code: string;
   name: string;
@@ -259,6 +265,39 @@ export interface AccountAchievementsResponse {
 export const getAccountAchievements = async (accountId: string) => {
   const { data } = await apiClient.get<AccountAchievementsResponse>(
     `/accounts/${accountId}/achievements`,
+  );
+
+  return data;
+};
+
+export interface AccountCurrentPod {
+  membershipId: string;
+  podId: string;
+  planCode: string;
+  name: string | null;
+  amount: number;
+  lifecycleWeeks: number;
+  maxMembers: number;
+  status: string;
+  podType: string;
+  cadence: string;
+  joinOrder: number;
+  finalOrder: number | null;
+  payoutDate: string | null;
+  paidOut: boolean;
+  joinedAt: string;
+  totalContributed: string;
+  goalType: string;
+  goalNote: string | null;
+  completedAt: string | null;
+  payoutAmount: string | null;
+}
+
+export type AccountCurrentPodsResponse = AccountCurrentPod[];
+
+export const getAccountCurrentPods = async (accountId: string) => {
+  const { data } = await apiClient.get<AccountCurrentPodsResponse>(
+    `accounts/${accountId}/pods`,
   );
 
   return data;
@@ -399,6 +438,7 @@ export interface PodMembership {
   accountEmail?: string;
   joinedAt?: string;
   status?: string;
+  account?: AccountSummary;
   [key: string]: unknown;
 }
 

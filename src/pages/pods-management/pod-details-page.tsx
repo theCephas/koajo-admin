@@ -1,10 +1,14 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Phone, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { usePodQuery, type PodQueryError } from "@/hooks/queries/use-pods";
 import { PodStatusBadge } from "./components/pod-status-badge";
+import {
+  AccountAvatar,
+  getAccountDisplayName,
+} from "@/pages/user-management/components/account-avatar";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -188,30 +192,69 @@ export default function PodDetailsPage() {
             {pod.memberships.length === 0 ? (
               <EmptyState
                 title="No memberships yet"
-                description="This pod currently has no members. Once participants join, you’ll see them here."
+                description="This pod currently has no members. Once participants join, you'll see them here."
               />
             ) : (
               <div className="space-y-3">
-                {pod.memberships.map((membership, index) => (
-                  <div
-                    key={membership.id ?? membership.accountId ?? index}
-                    className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] px-4 py-3"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-[#111827]">
-                        {membership.accountEmail ??
-                          membership.accountId ??
-                          "Unknown member"}
+                {pod.memberships.map((membership, index) => {
+                  const account = membership.account;
+                  const displayName = account
+                    ? getAccountDisplayName(account)
+                    : (membership.accountEmail ?? "Unknown member");
+
+                  return (
+                    <div
+                      key={membership.id ?? membership.accountId ?? index}
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        {account ? (
+                          <AccountAvatar account={account} />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                            <Users className="h-5 w-5" />
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-[#111827]">
+                              {displayName}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-[#6B7280]">
+                            {account && (
+                              <>
+                                <span className="inline-flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {account.email}
+                                </span>
+                                {account.phoneNumber && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Phone className="h-3 w-3" />
+                                    {account.phoneNumber}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {!account && membership.accountEmail && (
+                              <span className="inline-flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {membership.accountEmail}
+                              </span>
+                            )}
+                            <span>•</span>
+                            <span>
+                              Joined {formatDateTime(membership.joinedAt)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-[#6B7280]">
-                        Joined {formatDateTime(membership.joinedAt)}
-                      </div>
+                      <PodStatusBadge
+                        status={String(membership.status ?? "pending")}
+                      />
                     </div>
-                    <PodStatusBadge
-                      status={String(membership.status ?? "pending")}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

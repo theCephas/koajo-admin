@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  CircleDollarSign,
   FlagTriangleRight,
   Link2Off,
   Loader2,
@@ -10,6 +11,7 @@ import {
   MoreVertical,
   Phone,
   Target,
+  Trash2,
   Trophy,
 } from "lucide-react";
 
@@ -38,14 +40,21 @@ import {
 import { AccountStatusPill } from "./components/account-status-pill";
 import {
   useAccountAchievementsQuery,
+  useAccountCurrentPodsQuery,
   useAccountQuery,
   useUpdateAccountNotificationsMutation,
   useRemoveAccountBankConnectionMutation,
+  useDeleteAccountMutation,
   type AccountAchievementsQueryError,
+  type AccountCurrentPodsQueryError,
   type AccountQueryError,
   type UpdateAccountNotificationsError,
 } from "@/hooks/queries/use-accounts";
-import type { AccountAchievement, AccountDetails } from "@/services/api";
+import type {
+  AccountAchievement,
+  AccountCurrentPod,
+  AccountDetails,
+} from "@/services/api";
 import {
   AccountFlagsControls,
   getAccountFlagReasons,
@@ -193,6 +202,9 @@ const AchievementsSection = ({
   data,
   isLoading,
   error,
+  podsCount,
+  isPodsLoading,
+  onViewPods,
 }: {
   data:
     | {
@@ -204,6 +216,9 @@ const AchievementsSection = ({
     | undefined;
   isLoading: boolean;
   error: AccountAchievementsQueryError | null;
+  podsCount: number;
+  isPodsLoading: boolean;
+  onViewPods: () => void;
 }) => {
   if (isLoading) {
     return (
@@ -234,7 +249,7 @@ const AchievementsSection = ({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<Trophy className="h-4 w-4 text-emerald-600" />}
           label="Total earned"
@@ -252,6 +267,15 @@ const AchievementsSection = ({
           label="Achievements earned"
           value={`${earnedAchievements.length}`}
           tone="blue"
+        />
+        <StatCard
+          icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
+          label="Active Pods"
+          value={isPodsLoading ? "..." : `${podsCount}`}
+          tone="blue"
+          showButton={podsCount > 0}
+          buttonText="View Pods"
+          btnClick={onViewPods}
         />
       </div>
 
@@ -346,11 +370,17 @@ const StatCard = ({
   label,
   value,
   tone,
+  showButton,
+  buttonText,
+  btnClick,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   tone: "emerald" | "amber" | "blue";
+  showButton?: boolean;
+  buttonText?: string;
+  btnClick?: () => void;
 }) => {
   return (
     <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
@@ -363,6 +393,13 @@ const StatCard = ({
         {label}
       </div>
       <div className="text-xl font-semibold text-[#111827]">{value}</div>
+      {showButton && (
+        <div className="w-full flex justify-end">
+          <Button variant="outline" onClick={btnClick}>
+            {buttonText}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
@@ -456,7 +493,10 @@ const AccountOverview = ({ account }: { account: AccountDetails }) => {
 };
 
 const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
+  const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const accountName = getAccountDisplayName(account);
 
   const { mutate: removeBankConnection, isPending } =
     useRemoveAccountBankConnectionMutation(account.id, {
@@ -473,6 +513,29 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
       },
     });
 
+  const { mutate: deleteAccount, isPending: isDeleting } =
+    useDeleteAccountMutation(account.id, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false);
+        toast.success("User deleted successfully");
+        // Navigate after a short delay to allow the toast to be visible
+        setTimeout(() => {
+          void navigate("/users-management");
+        }, 100);
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to delete user";
+        toast.error(message);
+      },
+    });
+
+  const handleDeleteUser = () => {
+    deleteAccount();
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -481,6 +544,7 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
             variant="ghost"
             size="icon"
             className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+            disabled={isPending || isDeleting}
           >
             <MoreVertical className="h-4 w-4 text-[#6B7280]" />
             <span className="sr-only">More actions</span>
@@ -505,6 +569,18 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
               </DropdownMenuItem>
             </>
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer text-rose-600 focus:text-rose-600"
+            onSelect={(event) => {
+              event.preventDefault();
+              setDeleteConfirmOpen(true);
+            }}
+            disabled={isDeleting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            Delete User
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -522,7 +598,7 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
               Remove bank connection
             </DialogTitle>
             <DialogDescription>
-              This will disconnect the user’s linked bank account. They will
+              This will disconnect the user's linked bank account. They will
               need to reconnect before making future transfers. Are you sure you
               want to continue?
             </DialogDescription>
@@ -545,13 +621,200 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setDeleteConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{accountName}"? This action
+              cannot be undone and will permanently remove the user and all
+              their associated data from the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
+  );
+};
+
+const UserPodsModal = ({
+  open,
+  onOpenChange,
+  pods,
+  isLoading,
+  error,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pods: AccountCurrentPod[];
+  isLoading: boolean;
+  error: AccountCurrentPodsQueryError | null;
+}) => {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+    }).format(value);
+
+  const formatDate = (isoString?: string | null) => {
+    if (!isoString) return "—";
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(date);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl rounded-2xl p-6">
+        <DialogHeader>
+          <DialogTitle className="text-[18px]">User Pods</DialogTitle>
+          <DialogDescription>
+            View all pods this user is currently participating in.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-4 max-h-[500px] overflow-y-auto">
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#6B7280]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading pods…
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+              {error.response?.data?.message ??
+                error.message ??
+                "Failed to load pods"}
+            </div>
+          )}
+
+          {!isLoading && !error && pods.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-8 text-center">
+              <div className="text-sm font-medium text-[#111827]">
+                No active pods
+              </div>
+              <div className="text-xs text-[#6B7280]">
+                This user is not currently participating in any pods.
+              </div>
+            </div>
+          )}
+
+          {!isLoading && !error && pods.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#E5E7EB]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Pod
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Joined
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Contributed
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pods.map((pod) => (
+                    <tr
+                      key={pod.membershipId}
+                      className="border-b border-[#E5E7EB] hover:bg-[#F9FAFB]"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <Link
+                            to={`/pods-management/${pod.podId}`}
+                            className="text-sm font-semibold text-[#111827] hover:underline"
+                          >
+                            {pod.name ?? pod.planCode}
+                          </Link>
+                          <span className="text-xs text-[#6B7280]">
+                            {pod.lifecycleWeeks} weeks • {pod.maxMembers}{" "}
+                            members
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#374151]">
+                        {formatCurrency(pod.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            pod.status === "active"
+                              ? "bg-emerald-50 text-emerald-600"
+                              : pod.status === "pending"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-gray-50 text-gray-600"
+                          }`}
+                        >
+                          {pod.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#6B7280]">
+                        {formatDate(pod.joinedAt)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-[#111827]">
+                        ${pod.totalContributed}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
 export default function UserManagementDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const accountId = id ?? "";
+  const [podsModalOpen, setPodsModalOpen] = useState(false);
 
   const {
     data: account,
@@ -567,12 +830,19 @@ export default function UserManagementDetailsPage() {
   } = useAccountAchievementsQuery(accountId);
 
   const {
+    data: pods,
+    isLoading: isPodsLoading,
+    error: podsError,
+  } = useAccountCurrentPodsQuery(accountId);
+
+  const {
     mutate: updateNotificationPreferences,
     isPending: isUpdatingNotifications,
     error: updateNotificationsError,
   } = useUpdateAccountNotificationsMutation(accountId);
 
   const pendingNotificationError = updateNotificationsError ?? null;
+  const podsCount = pods?.length ?? 0;
 
   const breadcrumbLabel = useMemo(() => {
     if (account) return getAccountDisplayName(account);
@@ -708,11 +978,22 @@ export default function UserManagementDetailsPage() {
                 data={achievements}
                 isLoading={isAchievementsLoading}
                 error={achievementsError ?? null}
+                podsCount={podsCount}
+                isPodsLoading={isPodsLoading}
+                onViewPods={() => setPodsModalOpen(true)}
               />
             </div>
           </div>
         </div>
       )}
+
+      <UserPodsModal
+        open={podsModalOpen}
+        onOpenChange={setPodsModalOpen}
+        pods={pods ?? []}
+        isLoading={isPodsLoading}
+        error={podsError ?? null}
+      />
     </section>
   );
 }

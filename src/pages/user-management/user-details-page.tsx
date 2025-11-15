@@ -43,12 +43,14 @@ import {
   useAccountCurrentPodsQuery,
   useAccountQuery,
   useUpdateAccountNotificationsMutation,
+  useToggleAccountStatusMutation,
   useRemoveAccountBankConnectionMutation,
   useDeleteAccountMutation,
   type AccountAchievementsQueryError,
   type AccountCurrentPodsQueryError,
   type AccountQueryError,
   type UpdateAccountNotificationsError,
+  accountQueryKey,
 } from "@/hooks/queries/use-accounts";
 import type {
   AccountAchievement,
@@ -59,6 +61,7 @@ import {
   AccountFlagsControls,
   getAccountFlagReasons,
 } from "./components/account-flags-controls";
+import { queryClient } from "@/lib/query-client";
 
 const formatFullDateTime = (isoString?: string | null) => {
   if (!isoString) return "—";
@@ -494,14 +497,36 @@ const AccountOverview = ({ account }: { account: AccountDetails }) => {
 
 const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
   const navigate = useNavigate();
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [bankConfirmOpen, setBankConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const accountName = getAccountDisplayName(account);
+  const isActivating = !account.isActive;
 
-  const { mutate: removeBankConnection, isPending } =
+  const { mutate: toggleStatus, isPending: isTogglingStatus } =
+    useToggleAccountStatusMutation(account.id, {
+      onSuccess: (data) => {
+        setStatusConfirmOpen(false);
+        void queryClient.refetchQueries({
+          queryKey: accountQueryKey(account.id),
+        });
+        toast.success(
+          `Account ${data.isActive ? "activated" : "disabled"} successfully`,
+        );
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to update account status";
+        toast.error(message);
+      },
+    });
+
+  const { mutate: removeBankConnection, isPending: isRemovingBank } =
     useRemoveAccountBankConnectionMutation(account.id, {
       onSuccess: () => {
-        setConfirmOpen(false);
+        setBankConfirmOpen(false);
         toast.success("Bank connection removed");
       },
       onError: (error) => {
@@ -532,6 +557,12 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
       },
     });
 
+  const handleToggleStatus = () => {
+    toggleStatus({
+      isActive: !account.isActive,
+    });
+  };
+
   const handleDeleteUser = () => {
     deleteAccount();
   };
@@ -544,7 +575,7 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
             variant="ghost"
             size="icon"
             className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0"
-            disabled={isPending || isDeleting}
+            disabled={isTogglingStatus || isRemovingBank || isDeleting}
           >
             <MoreVertical className="h-4 w-4 text-[#6B7280]" />
             <span className="sr-only">More actions</span>
@@ -554,6 +585,17 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
           <div className="px-2 pb-2">
             <AccountFlagsControls account={account} />
           </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(event) => {
+              event.preventDefault();
+              setStatusConfirmOpen(true);
+            }}
+            disabled={isTogglingStatus}
+          >
+            {isActivating ? "Activate Account" : "Disable Account"}
+          </DropdownMenuItem>
           {account.bankAccountLinked && (
             <>
               <DropdownMenuSeparator />
@@ -561,8 +603,9 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
                 className="cursor-pointer text-rose-600 focus:text-rose-600"
                 onSelect={(event) => {
                   event.preventDefault();
-                  setConfirmOpen(true);
+                  setBankConfirmOpen(true);
                 }}
+                disabled={isRemovingBank}
               >
                 <Link2Off className="mr-2 h-4 w-4" aria-hidden="true" />
                 Remove bank connection
@@ -585,10 +628,54 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
       </DropdownMenu>
 
       <Dialog
-        open={confirmOpen}
+        open={statusConfirmOpen}
         onOpenChange={(open) => {
-          if (!isPending) {
-            setConfirmOpen(open);
+          if (!isTogglingStatus) {
+            setStatusConfirmOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">
+              {isActivating ? "Activate Account" : "Disable Account"}
+            </DialogTitle>
+            <DialogDescription>
+              {isActivating
+                ? `Are you sure you want to activate "${accountName}"? This will restore their access to the platform.`
+                : `Are you sure you want to disable "${accountName}"? This will temporarily block their access to the platform.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setStatusConfirmOpen(false)}
+              disabled={isTogglingStatus}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleToggleStatus}
+              disabled={isTogglingStatus}
+              variant={isActivating ? "default" : "destructive"}
+            >
+              {isTogglingStatus
+                ? isActivating
+                  ? "Activating..."
+                  : "Disabling..."
+                : isActivating
+                  ? "Activate"
+                  : "Disable"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={bankConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isRemovingBank) {
+            setBankConfirmOpen(open);
           }
         }}
       >
@@ -606,17 +693,17 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
           <DialogFooter className="mt-4 flex gap-2 sm:justify-end">
             <Button
               variant="outline"
-              onClick={() => setConfirmOpen(false)}
-              disabled={isPending}
+              onClick={() => setBankConfirmOpen(false)}
+              disabled={isRemovingBank}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => removeBankConnection()}
-              disabled={isPending}
+              disabled={isRemovingBank}
             >
-              {isPending ? "Removing…" : "Remove"}
+              {isRemovingBank ? "Removing…" : "Remove"}
             </Button>
           </DialogFooter>
         </DialogContent>

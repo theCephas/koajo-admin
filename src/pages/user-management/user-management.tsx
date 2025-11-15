@@ -30,9 +30,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   useAccountsQuery,
-  useUpdateAccountStatusMutation,
+  useToggleAccountStatusMutation,
   useDeleteAccountMutation,
   type AccountsQueryError,
+  accountsQueryKey,
 } from "@/hooks/queries/use-accounts";
 import type { AccountSummary } from "@/services/api";
 import {
@@ -45,6 +46,7 @@ import {
   getAccountFlagReasons,
 } from "./components/account-flags-controls";
 import { useDebouncedValue } from "@/hooks/use-debounce";
+import { queryClient } from "@/lib/query-client";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -115,11 +117,12 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
   const accountName = getAccountDisplayName(account);
   const isActivating = !account.isActive;
 
-  const { mutate: updateStatus, isPending } = useUpdateAccountStatusMutation(
+  const { mutate: toggleStatus, isPending } = useToggleAccountStatusMutation(
     account.id,
     {
       onSuccess: (data) => {
         setConfirmOpen(false);
+        void queryClient.refetchQueries({ queryKey: accountsQueryKey({}) });
         toast.success(
           `Account ${data.isActive ? "activated" : "disabled"} successfully`,
         );
@@ -150,11 +153,7 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
     });
 
   const handleToggleStatus = () => {
-    updateStatus({
-      email: account.email,
-      firstName: account.firstName ?? "",
-      lastName: account.lastName ?? "",
-      phoneNumber: account.phoneNumber ?? "",
+    toggleStatus({
       isActive: !account.isActive,
     });
   };
@@ -181,6 +180,17 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
           <div className="px-2 pb-2">
             <AccountFlagsControls account={account} />
           </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(event) => {
+              event.preventDefault();
+              setConfirmOpen(true);
+            }}
+            disabled={isPending}
+          >
+            {isActivating ? "Activate Account" : "Disable Account"}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer text-rose-600 focus:text-rose-600"

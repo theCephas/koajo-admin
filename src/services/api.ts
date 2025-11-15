@@ -209,6 +209,27 @@ export const updateAccountStatus = async ({
   return data;
 };
 
+export interface ToggleAccountStatusPayload {
+  isActive: boolean;
+}
+
+export type ToggleAccountStatusResponse = AccountDetails;
+
+export const toggleAccountStatus = async ({
+  accountId,
+  payload,
+}: {
+  accountId: string;
+  payload: ToggleAccountStatusPayload;
+}) => {
+  const { data } = await apiClient.patch<ToggleAccountStatusResponse>(
+    `/accounts/${accountId}/status`,
+    payload,
+  );
+
+  return data;
+};
+
 export interface UpdateAccountFlagsPayload {
   fraudReview?: boolean;
   missedPayment?: boolean;

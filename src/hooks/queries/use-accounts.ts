@@ -14,6 +14,7 @@ import {
   getAccountCurrentPods,
   updateAccountNotifications,
   updateAccountStatus,
+  toggleAccountStatus,
   updateAccountFlags,
   removeAccountBankConnection,
   deleteAccount,
@@ -26,6 +27,8 @@ import {
   type UpdateAccountNotificationsResponse,
   type UpdateAccountStatusPayload,
   type UpdateAccountStatusResponse,
+  type ToggleAccountStatusPayload,
+  type ToggleAccountStatusResponse,
   type UpdateAccountFlagsPayload,
   type UpdateAccountFlagsResponse,
 } from "@/services/api";
@@ -36,6 +39,7 @@ export type AccountAchievementsQueryError = AxiosError<{ message?: string }>;
 export type AccountCurrentPodsQueryError = AxiosError<{ message?: string }>;
 export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
 export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
+export type ToggleAccountStatusError = AxiosError<{ message?: string }>;
 export type UpdateAccountFlagsError = AxiosError<{ message?: string }>;
 export type RemoveAccountBankConnectionError = AxiosError<{ message?: string }>;
 export type DeleteAccountError = AxiosError<{ message?: string }>;
@@ -213,36 +217,59 @@ export const useUpdateAccountStatusMutation = (
         payload,
       }),
     onSuccess: (data, variables, onMutateResult, context) => {
-      // Update individual account cache with full response
-      queryClient.setQueryData<AccountDetails | undefined>(
-        accountQueryKey(accountId),
-        data,
-      );
-
-      // Update accounts list cache optimistically
-      queryClient.setQueriesData<AccountsResponse>(
-        { queryKey: ACCOUNTS_QUERY_KEY },
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            items: oldData.items.map((account) =>
-              account.id === accountId
-                ? {
-                    ...account,
-                    email: data.email,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    phoneNumber: data.phoneNumber,
-                    isActive: data.isActive,
-                  }
-                : account,
-            ),
-          };
-        },
-      );
-
+      // Invalidate and refetch
+      void queryClient.invalidateQueries({
+        queryKey: accountQueryKey(accountId),
+      });
       void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      // Force immediate refetch
+      void queryClient.refetchQueries({
+        queryKey: accountQueryKey(accountId),
+      });
+      void queryClient.refetchQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      return options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+
+    ...options,
+  });
+};
+
+export const useToggleAccountStatusMutation = (
+  accountId: string,
+  options?: UseMutationOptions<
+    ToggleAccountStatusResponse,
+    ToggleAccountStatusError,
+    ToggleAccountStatusPayload,
+    unknown
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ToggleAccountStatusResponse,
+    ToggleAccountStatusError,
+    ToggleAccountStatusPayload,
+    unknown
+  >({
+    mutationFn: (payload) =>
+      toggleAccountStatus({
+        accountId,
+        payload,
+      }),
+    onSuccess: (data, variables, onMutateResult, context) => {
+      // Invalidate and refetch
+      void queryClient.invalidateQueries({
+        queryKey: accountQueryKey(accountId),
+      });
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      // Force immediate refetch
+      void queryClient.refetchQueries({
+        queryKey: accountQueryKey(accountId),
+      });
+      void queryClient.refetchQueries({ queryKey: ACCOUNTS_QUERY_KEY });
 
       return options?.onSuccess?.(data, variables, onMutateResult, context);
     },
@@ -274,11 +301,17 @@ export const useUpdateAccountFlagsMutation = (
         payload,
       }),
     onSuccess: (data, variables, onMutateResult, context) => {
-      // Invalidate queries to refetch fresh data from the backend
+      // Invalidate and refetch
       void queryClient.invalidateQueries({
         queryKey: accountQueryKey(accountId),
       });
       void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      // Force immediate refetch
+      void queryClient.refetchQueries({
+        queryKey: accountQueryKey(accountId),
+      });
+      void queryClient.refetchQueries({ queryKey: ACCOUNTS_QUERY_KEY });
 
       return options?.onSuccess?.(data, variables, onMutateResult, context);
     },

@@ -5,7 +5,11 @@ import { toast } from "sonner";
 
 import { Switch } from "@/components/ui/switch";
 import type { AccountSummary, UpdateAccountFlagsPayload } from "@/services/api";
-import { useUpdateAccountFlagsMutation } from "@/hooks/queries/use-accounts";
+import {
+  useUpdateAccountFlagsMutation,
+  accountQueryKey,
+} from "@/hooks/queries/use-accounts";
+import { queryClient } from "@/lib/query-client";
 
 export type AccountFlagKey = "fraudReview" | "missedPayment";
 
@@ -101,6 +105,9 @@ export const AccountFlagsControls = ({
     updateFlags(payload, {
       onSuccess: (data) => {
         const label = FLAG_LABELS[flagKey].label;
+        void queryClient.refetchQueries({
+          queryKey: accountQueryKey(account.id),
+        });
         toast.success(`${label} flag ${checked ? "enabled" : "disabled"}`);
         return data;
       },

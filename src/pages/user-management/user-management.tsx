@@ -141,6 +141,7 @@ const AccountActions = ({ account }: { account: AccountSummary }) => {
     useDeleteAccountMutation(account.id, {
       onSuccess: () => {
         setDeleteConfirmOpen(false);
+        void queryClient.refetchQueries({ queryKey: accountsQueryKey({}) });
         toast.success("User deleted successfully");
       },
       onError: (error) => {

@@ -13,6 +13,7 @@ interface PermissionsSelectorProps {
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  isEdit?: boolean;
 }
 
 export function PermissionsSelector({
@@ -22,6 +23,7 @@ export function PermissionsSelector({
   disabled = false,
   loading = false,
   className = "",
+  isEdit = false,
 }: PermissionsSelectorProps) {
   const [search, setSearch] = React.useState("");
   const debouncedSearch = useDebouncedValue(search.trim());
@@ -113,7 +115,10 @@ export function PermissionsSelector({
             : "No permissions match your search."}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        //
+        <div
+          className={`grid gap-3  ${isEdit ? "md:grid-cols-2" : "lg:grid-cols-3"}`}
+        >
           {filteredPermissions.map((permission) => {
             const checked = selectedSet.has(permission.id);
 

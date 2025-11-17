@@ -573,7 +573,7 @@ export default function AdminAccessPage() {
         open={permsOpen}
         onOpenChange={(v) => !savingPerms && setPermsOpen(v)}
       >
-        <DialogContent className="sm:max-w-[820px] rounded-2xl p-6">
+        <DialogContent className="sm:max-w-[820px] max-h-[85%] rounded-2xl p-6 overflow-y-scroll">
           <DialogHeader>
             <DialogTitle className="text-[18px]">
               Adjust permissions{" "}
@@ -592,6 +592,7 @@ export default function AdminAccessPage() {
                 onSelectionChange={onAllowChange}
                 loading={permissionsLoading}
                 disabled={savingPerms}
+                isEdit={true}
               />
             </div>
             <div className="space-y-3">
@@ -604,6 +605,7 @@ export default function AdminAccessPage() {
                 onSelectionChange={onDenyChange}
                 loading={permissionsLoading}
                 disabled={savingPerms}
+                isEdit={true}
               />
             </div>
           </div>

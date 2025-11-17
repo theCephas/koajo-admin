@@ -1330,6 +1330,20 @@ export default function UserManagementDetailsPage() {
                   label="Phone number"
                   value={account.phoneNumber ?? "No phone number on record"}
                 />
+                <InfoRow
+                  label="Bank name"
+                  value={
+                    account.bankAccount?.bankName ?? "No bank account linked"
+                  }
+                />
+                <InfoRow
+                  label="Account number"
+                  value={
+                    account.bankAccount
+                      ? `****${account.bankAccount.accountLast4}`
+                      : "—"
+                  }
+                />
               </div>
             </div>
 

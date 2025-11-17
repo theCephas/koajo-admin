@@ -577,6 +577,26 @@ export default function UserManagement() {
         ),
       },
       {
+        key: "bankAccount",
+        label: "BANK DETAILS",
+        width: 200,
+        render: (_, account) => {
+          if (!account.bankAccount) {
+            return <span className="text-sm text-[#9CA3AF]">—</span>;
+          }
+          return (
+            <div className="flex flex-col text-sm text-[#374151]">
+              <span className="font-medium">
+                {account.bankAccount.bankName}
+              </span>
+              <span className="text-xs text-[#9CA3AF]">
+                ****{account.bankAccount.accountLast4}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
         key: "isActive",
         label: "STATUS",
         width: 120,

@@ -13,10 +13,28 @@ export interface LoginResponse {
   role: string;
   isSuperAdmin: boolean;
   refreshToken?: string | null;
+  requiresPasswordChange?: boolean;
 }
 
 export const login = async (payload: LoginPayload) => {
   const { data } = await apiClient.post<LoginResponse>("/auth/login", payload);
+  return data;
+};
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+}
+
+export const changePassword = async (payload: ChangePasswordPayload) => {
+  const { data } = await apiClient.post<ChangePasswordResponse>(
+    "/auth/change-password",
+    payload,
+  );
   return data;
 };
 
@@ -262,9 +280,7 @@ export const removeAccountBankConnection = async (accountId: string) => {
 };
 
 export const deleteAccount = async (accountId: string) => {
-  await apiClient.delete(`/v1/auth/account`, {
-    params: { accountId },
-  });
+  await apiClient.delete(`/accounts/${accountId}`);
 };
 
 export interface AccountAchievement {
@@ -710,4 +726,48 @@ export const updateAdminUserPermissions = async ({
 
 export const deleteAdminUser = async (adminId: string) => {
   await apiClient.delete(`/users/${adminId}`);
+};
+
+// Email Templates
+export interface EmailTemplateVariable {
+  key: string;
+  label: string;
+  required: boolean;
+}
+
+export interface EmailTemplate {
+  code: string;
+  name: string;
+  subject: string;
+  description: string;
+  variables: EmailTemplateVariable[];
+}
+
+export interface SendManualEmailPayload {
+  templateCode: string;
+  subject: string;
+  recipients: {
+    email: string;
+    variables?: Record<string, unknown>;
+  }[];
+}
+
+export interface SendManualEmailResponse {
+  success: boolean;
+  message?: string;
+}
+
+export const getManualEmailTemplates = async () => {
+  const { data } = await apiClient.get<EmailTemplate[]>(
+    "/email-templates/manual",
+  );
+  return data;
+};
+
+export const sendManualEmail = async (payload: SendManualEmailPayload) => {
+  const { data } = await apiClient.post<SendManualEmailResponse>(
+    "/email-templates/manual/send",
+    payload,
+  );
+  return data;
 };

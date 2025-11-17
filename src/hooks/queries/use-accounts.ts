@@ -354,7 +354,11 @@ export const useDeleteAccountMutation = (
   return useMutation<void, DeleteAccountError, void, unknown>({
     mutationFn: () => deleteAccount(accountId),
     onSuccess: (data, variables, onMutateResult, context) => {
+      // Invalidate and refetch
       void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+
+      // Force immediate refetch
+      void queryClient.refetchQueries({ queryKey: ACCOUNTS_QUERY_KEY });
 
       return options?.onSuccess?.(data, variables, onMutateResult, context);
     },

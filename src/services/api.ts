@@ -727,3 +727,47 @@ export const updateAdminUserPermissions = async ({
 export const deleteAdminUser = async (adminId: string) => {
   await apiClient.delete(`/users/${adminId}`);
 };
+
+// Email Templates
+export interface EmailTemplateVariable {
+  key: string;
+  label: string;
+  required: boolean;
+}
+
+export interface EmailTemplate {
+  code: string;
+  name: string;
+  subject: string;
+  description: string;
+  variables: EmailTemplateVariable[];
+}
+
+export interface SendManualEmailPayload {
+  templateCode: string;
+  subject: string;
+  recipients: {
+    email: string;
+    variables?: Record<string, unknown>;
+  }[];
+}
+
+export interface SendManualEmailResponse {
+  success: boolean;
+  message?: string;
+}
+
+export const getManualEmailTemplates = async () => {
+  const { data } = await apiClient.get<EmailTemplate[]>(
+    "/email-templates/manual",
+  );
+  return data;
+};
+
+export const sendManualEmail = async (payload: SendManualEmailPayload) => {
+  const { data } = await apiClient.post<SendManualEmailResponse>(
+    "/email-templates/manual/send",
+    payload,
+  );
+  return data;
+};

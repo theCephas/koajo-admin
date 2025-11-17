@@ -2,12 +2,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  CalendarIcon,
   FlagTriangleRight,
   Loader2,
+  Mail,
   MoreVertical,
   Search,
   Trash2,
 } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
@@ -29,6 +32,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
   useAccountsQuery,
   useToggleAccountStatusMutation,
   useDeleteAccountMutation,
@@ -47,6 +58,17 @@ import {
 } from "./components/account-flags-controls";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 import { queryClient } from "@/lib/query-client";
+import {
+  useEmailTemplatesQuery,
+  useSendManualEmailMutation,
+} from "@/hooks/queries/use-email-templates";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -296,6 +318,13 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [bulkEmailDialogOpen, setBulkEmailDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [currentRecipientIndex, setCurrentRecipientIndex] = useState(0);
+  const [recipientVariables, setRecipientVariables] = useState<
+    Record<string, Record<string, string>>
+  >({});
 
   const debouncedSearch = useDebouncedValue(search.trim());
 
@@ -314,6 +343,28 @@ export default function UserManagement() {
   const totalCount = (data as { total?: number } | undefined)?.total ?? 0;
   const accounts =
     (data as { items: AccountSummary[] } | undefined)?.items ?? [];
+
+  const { data: emailTemplates = [], isLoading: templatesLoading } =
+    useEmailTemplatesQuery();
+
+  const { mutate: sendBulkEmail, isPending: isSendingEmail } =
+    useSendManualEmailMutation({
+      onSuccess: () => {
+        toast.success("Emails sent successfully");
+        setBulkEmailDialogOpen(false);
+        setSelectedAccountIds([]);
+        setSelectedTemplate("");
+        setCurrentRecipientIndex(0);
+        setRecipientVariables({});
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to send emails";
+        toast.error(message);
+      },
+    });
 
   useEffect(() => {
     if (!data) return;
@@ -335,6 +386,145 @@ export default function UserManagement() {
   useEffect(() => {
     setPage(1);
   }, [pageSize]);
+
+  useEffect(() => {
+    setSelectedAccountIds([]);
+  }, [page, pageSize, debouncedSearch]);
+
+  const isAllVariablesFilled = () => {
+    if (!selectedTemplate) return false;
+
+    const template = emailTemplates.find((t) => t.code === selectedTemplate);
+    if (!template) return false;
+
+    const selectedAccounts = accounts.filter((account) =>
+      selectedAccountIds.includes(account.id),
+    );
+
+    const requiredVars = template.variables.filter((v) => v.required);
+
+    for (const account of selectedAccounts) {
+      const recipientVars = recipientVariables[account.id] || {};
+
+      for (const variable of requiredVars) {
+        if (!recipientVars[variable.key]?.trim()) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const handleSendBulkEmail = () => {
+    if (!selectedTemplate) {
+      toast.error("Please select an email template");
+      return;
+    }
+
+    if (selectedAccountIds.length === 0) {
+      toast.error("Please select at least one user");
+      return;
+    }
+
+    const selectedAccounts = accounts.filter((account) =>
+      selectedAccountIds.includes(account.id),
+    );
+
+    const template = emailTemplates.find((t) => t.code === selectedTemplate);
+
+    if (!template) {
+      toast.error("Invalid template selected");
+      return;
+    }
+
+    sendBulkEmail({
+      templateCode: selectedTemplate,
+      subject: template.subject,
+      recipients: selectedAccounts.map((account) => ({
+        email: account.email,
+        variables: recipientVariables[account.id] || {},
+      })),
+    });
+  };
+
+  const handleOpenBulkEmailDialog = () => {
+    if (selectedAccountIds.length === 0) {
+      toast.error("Please select at least one user to send emails");
+      return;
+    }
+    setBulkEmailDialogOpen(true);
+  };
+
+  const handleTemplateChange = (templateCode: string) => {
+    const template = emailTemplates.find((t) => t.code === templateCode);
+    if (!template) return;
+
+    const selectedAccounts = accounts.filter((account) =>
+      selectedAccountIds.includes(account.id),
+    );
+
+    const initialRecipientVars: Record<string, Record<string, string>> = {};
+    selectedAccounts.forEach((account) => {
+      const vars: Record<string, string> = {};
+      template.variables.forEach((variable) => {
+        switch (variable.key) {
+          case "firstName":
+            vars[variable.key] = account.firstName ?? "";
+            break;
+          case "lastName":
+            vars[variable.key] = account.lastName ?? "";
+            break;
+          case "email":
+            vars[variable.key] = account.email;
+            break;
+          case "phoneNumber":
+            vars[variable.key] = account.phoneNumber ?? "";
+            break;
+          default:
+            vars[variable.key] = "";
+            break;
+        }
+      });
+      initialRecipientVars[account.id] = vars;
+    });
+
+    // Update all states together
+    setSelectedTemplate(templateCode);
+    setCurrentRecipientIndex(0);
+    setRecipientVariables(initialRecipientVars);
+  };
+
+  const handleRecipientVariableChange = (key: string, value: string) => {
+    const selectedAccounts = accounts.filter((account) =>
+      selectedAccountIds.includes(account.id),
+    );
+    const currentAccount = selectedAccounts[currentRecipientIndex];
+    if (!currentAccount) return;
+
+    setRecipientVariables((prev) => ({
+      ...prev,
+      [currentAccount.id]: {
+        ...prev[currentAccount.id],
+        [key]: value,
+      },
+    }));
+  };
+
+  const handlePreviousRecipient = () => {
+    if (currentRecipientIndex > 0) {
+      setCurrentRecipientIndex(currentRecipientIndex - 1);
+    }
+  };
+
+  const handleNextRecipient = () => {
+    const selectedAccounts = accounts.filter((account) =>
+      selectedAccountIds.includes(account.id),
+    );
+    if (currentRecipientIndex < selectedAccounts.length - 1) {
+      setCurrentRecipientIndex(currentRecipientIndex + 1);
+    }
+  };
 
   const columns = useMemo<Column<AccountSummary>[]>(
     () => [
@@ -440,13 +630,15 @@ export default function UserManagement() {
               Search, review, and manage all customer accounts from one place.
             </p>
           </div>
-          {/* <Button
-            variant="outline"
-            className="rounded-xl h-9 px-3 inline-flex items-center gap-2"
+          <Button
+            variant="default"
+            className="rounded-xl"
+            onClick={handleOpenBulkEmailDialog}
+            disabled={selectedAccountIds.length === 0}
           >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button> */}
+            <Mail className="mr-2 h-4 w-4" />
+            Send Bulk Email ({selectedAccountIds.length})
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -478,7 +670,7 @@ export default function UserManagement() {
         title=""
         data={Array.isArray(accounts) ? accounts : []}
         columns={columns}
-        showCheckboxes={false}
+        showCheckboxes={true}
         searchable={false}
         filterable={false}
         page={page}
@@ -489,6 +681,8 @@ export default function UserManagement() {
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         loading={isFetching}
         onRefresh={refetch}
+        selectedRows={selectedAccountIds}
+        onRowSelect={(ids) => setSelectedAccountIds(ids as string[])}
         emptyStateTitle={isLoading ? "Loading accounts…" : "No accounts found"}
         emptyStateDescription={
           isLoading
@@ -497,6 +691,348 @@ export default function UserManagement() {
         }
         className="mt-2"
       />
+
+      <Dialog
+        open={bulkEmailDialogOpen}
+        onOpenChange={(open) => {
+          if (!isSendingEmail) {
+            setBulkEmailDialogOpen(open);
+            if (!open) {
+              setSelectedTemplate("");
+              setCurrentRecipientIndex(0);
+              setRecipientVariables({});
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[18px]">Send Bulk Email</DialogTitle>
+            <DialogDescription>
+              Send an email template to {selectedAccountIds.length} selected{" "}
+              {selectedAccountIds.length === 1 ? "user" : "users"}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-template">Email Template</Label>
+              <Select
+                value={selectedTemplate}
+                onValueChange={handleTemplateChange}
+                disabled={isSendingEmail || templatesLoading}
+              >
+                <SelectTrigger id="email-template">
+                  <SelectValue
+                    placeholder={
+                      templatesLoading
+                        ? "Loading templates..."
+                        : "Select a template"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map((template) => (
+                    <SelectItem key={template.code} value={template.code}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{template.name}</span>
+                        <span className="text-xs text-[#6B7280]">
+                          {template.subject}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedTemplate &&
+              (() => {
+                const template = emailTemplates.find(
+                  (t) => t.code === selectedTemplate,
+                );
+                const selectedAccounts = accounts.filter((account) =>
+                  selectedAccountIds.includes(account.id),
+                );
+                const currentAccount = selectedAccounts[currentRecipientIndex];
+
+                return template && currentAccount ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                          Editing Recipient
+                        </p>
+                        <p className="text-sm font-medium text-[#111827] mt-1">
+                          {currentAccount.email}
+                        </p>
+                        <p className="text-xs text-[#6B7280]">
+                          {currentAccount.firstName} {currentAccount.lastName}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePreviousRecipient}
+                          disabled={
+                            currentRecipientIndex === 0 || isSendingEmail
+                          }
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-xs font-medium text-[#6B7280] whitespace-nowrap">
+                          {currentRecipientIndex + 1} of{" "}
+                          {selectedAccounts.length}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleNextRecipient}
+                          disabled={
+                            currentRecipientIndex ===
+                              selectedAccounts.length - 1 || isSendingEmail
+                          }
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">
+                        Template Variables
+                      </Label>
+                      <p className="text-xs text-[#6B7280]">
+                        Customize the variables for this recipient. Auto-filled
+                        fields can be edited.
+                      </p>
+                      <div className="space-y-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                        {template.variables.map((variable) => {
+                          const userFields = [
+                            "firstName",
+                            "lastName",
+                            "email",
+                            "phoneNumber",
+                          ];
+                          const isUserField = userFields.includes(variable.key);
+                          const currentValue =
+                            recipientVariables[currentAccount.id]?.[
+                              variable.key
+                            ] ?? "";
+                          const isDateField =
+                            variable.key.toLowerCase().includes("date") ||
+                            variable.label.toLowerCase().includes("date");
+
+                          return (
+                            <div key={variable.key} className="space-y-1.5">
+                              <Label
+                                htmlFor={`recipient-var-${variable.key}`}
+                                className="text-sm flex items-center gap-2"
+                              >
+                                <span>
+                                  {variable.label}
+                                  {variable.required && (
+                                    <span className="text-rose-500 ml-1">
+                                      *
+                                    </span>
+                                  )}
+                                </span>
+                                {isUserField && (
+                                  <span className="text-xs text-blue-600 font-normal">
+                                    (auto-filled)
+                                  </span>
+                                )}
+                              </Label>
+                              {isDateField ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !currentValue &&
+                                          "text-muted-foreground",
+                                      )}
+                                      disabled={isSendingEmail}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {currentValue ? (
+                                        format(new Date(currentValue), "PPP")
+                                      ) : (
+                                        <span>Pick a date</span>
+                                      )}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-[300px] p-0"
+                                    align="start"
+                                  >
+                                    <Calendar
+                                      className="w-full"
+                                      mode="single"
+                                      selected={
+                                        currentValue
+                                          ? new Date(currentValue)
+                                          : undefined
+                                      }
+                                      onSelect={(date) => {
+                                        if (date) {
+                                          handleRecipientVariableChange(
+                                            variable.key,
+                                            format(date, "yyyy-MM-dd"),
+                                          );
+                                        }
+                                      }}
+                                      disabled={isSendingEmail}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <Input
+                                  id={`recipient-var-${variable.key}`}
+                                  value={currentValue}
+                                  onChange={(e) =>
+                                    handleRecipientVariableChange(
+                                      variable.key,
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder={`Enter ${variable.label.toLowerCase()}`}
+                                  disabled={isSendingEmail}
+                                  required={variable.required}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+            {selectedTemplate && (
+              <>
+                <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF] mb-2">
+                    Template Details
+                  </p>
+                  {(() => {
+                    const template = emailTemplates.find(
+                      (t) => t.code === selectedTemplate,
+                    );
+                    return template ? (
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-[#111827]">
+                            {template.name}
+                          </span>
+                        </div>
+                        <div className="text-[#6B7280]">
+                          <strong>Subject:</strong> {template.subject}
+                        </div>
+                        {template.description && (
+                          <div className="text-[#6B7280]">
+                            {template.description}
+                          </div>
+                        )}
+                        {template.variables.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-[#E5E7EB]">
+                            <p className="text-xs font-medium text-[#6B7280] mb-1">
+                              Template variables:
+                            </p>
+                            <ul className="text-xs text-[#9CA3AF] space-y-0.5">
+                              {template.variables.map((v) => {
+                                const userFields = [
+                                  "firstName",
+                                  "lastName",
+                                  "email",
+                                  "phoneNumber",
+                                ];
+                                const isUserField = userFields.includes(v.key);
+                                return (
+                                  <li key={v.key}>
+                                    • {v.label}
+                                    {isUserField ? (
+                                      <span className="text-blue-600">
+                                        {" "}
+                                        (auto-filled from user data)
+                                      </span>
+                                    ) : v.required ? (
+                                      <span className="text-amber-600">
+                                        {" "}
+                                        (required)
+                                      </span>
+                                    ) : null}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+
+                <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF] mb-2">
+                    Recipients ({selectedAccountIds.length})
+                  </p>
+                  <div className="max-h-32 overflow-y-auto">
+                    <ul className="space-y-1 text-sm">
+                      {accounts
+                        .filter((account) =>
+                          selectedAccountIds.includes(account.id),
+                        )
+                        .map((account) => (
+                          <li key={account.id} className="text-[#374151]">
+                            {account.email}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkEmailDialogOpen(false);
+                setSelectedTemplate("");
+              }}
+              disabled={isSendingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendBulkEmail}
+              disabled={
+                isSendingEmail || !selectedTemplate || !isAllVariablesFilled()
+              }
+            >
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Email
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

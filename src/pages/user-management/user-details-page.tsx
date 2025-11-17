@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  CalendarIcon,
   CircleDollarSign,
   FlagTriangleRight,
   Link2Off,
@@ -10,10 +11,12 @@ import {
   Medal,
   MoreVertical,
   Phone,
+  Send,
   Target,
   Trash2,
   Trophy,
 } from "lucide-react";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +35,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   AccountAvatar,
@@ -52,6 +71,10 @@ import {
   type UpdateAccountNotificationsError,
   accountQueryKey,
 } from "@/hooks/queries/use-accounts";
+import {
+  useEmailTemplatesQuery,
+  useSendManualEmailMutation,
+} from "@/hooks/queries/use-email-templates";
 import type {
   AccountAchievement,
   AccountCurrentPod,
@@ -500,6 +523,7 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
   const [bankConfirmOpen, setBankConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const accountName = getAccountDisplayName(account);
   const isActivating = !account.isActive;
 
@@ -585,6 +609,17 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
           <div className="px-2 pb-2">
             <AccountFlagsControls account={account} />
           </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(event) => {
+              event.preventDefault();
+              setEmailDialogOpen(true);
+            }}
+          >
+            <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+            Send Email
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="cursor-pointer"
@@ -744,7 +779,301 @@ const AccountActionsMenu = ({ account }: { account: AccountDetails }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SendEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        account={account}
+      />
     </>
+  );
+};
+
+const SendEmailDialog = ({
+  open,
+  onOpenChange,
+  account,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  account: AccountDetails;
+}) => {
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [variables, setVariables] = useState<Record<string, string>>({});
+
+  const { data: emailTemplates = [], isLoading: isLoadingTemplates } =
+    useEmailTemplatesQuery();
+
+  const { mutate: sendEmail, isPending: isSendingEmail } =
+    useSendManualEmailMutation({
+      onSuccess: () => {
+        toast.success("Email sent successfully");
+        onOpenChange(false);
+        setSelectedTemplate("");
+        setVariables({});
+      },
+      onError: (error) => {
+        const message =
+          error.response?.data?.message ??
+          error.message ??
+          "Failed to send email";
+        toast.error(message);
+      },
+    });
+
+  const template = emailTemplates.find((t) => t.code === selectedTemplate);
+
+  const handleTemplateChange = (templateCode: string) => {
+    const newTemplate = emailTemplates.find((t) => t.code === templateCode);
+    if (!newTemplate) return;
+
+    const initialVars: Record<string, string> = {};
+    newTemplate.variables.forEach((variable) => {
+      switch (variable.key) {
+        case "firstName":
+          initialVars[variable.key] = account.firstName ?? "";
+          break;
+        case "lastName":
+          initialVars[variable.key] = account.lastName ?? "";
+          break;
+        case "email":
+          initialVars[variable.key] = account.email;
+          break;
+        case "phoneNumber":
+          initialVars[variable.key] = account.phoneNumber ?? "";
+          break;
+        default:
+          initialVars[variable.key] = "";
+          break;
+      }
+    });
+
+    setSelectedTemplate(templateCode);
+    setVariables(initialVars);
+  };
+
+  const handleVariableChange = (key: string, value: string) => {
+    setVariables((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const isAllVariablesFilled = () => {
+    if (!template) return false;
+    const requiredVars = template.variables.filter((v) => v.required);
+    return requiredVars.every((variable) => variables[variable.key]?.trim());
+  };
+
+  const handleSendEmail = () => {
+    if (!template) return;
+
+    sendEmail({
+      templateCode: template.code,
+      subject: template.subject,
+      recipients: [
+        {
+          email: account.email,
+          variables,
+        },
+      ],
+    });
+  };
+
+  const userFieldKeys = ["firstName", "lastName", "email", "phoneNumber"];
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isSendingEmail) {
+          onOpenChange(isOpen);
+          if (!isOpen) {
+            setSelectedTemplate("");
+            setVariables({});
+          }
+        }
+      }}
+    >
+      <DialogContent className="max-w-2xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-[18px]">Send Email</DialogTitle>
+          <DialogDescription>
+            Send a personalized email to {getAccountDisplayName(account)} (
+            {account.email})
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="template-select" className="text-sm">
+              Email Template <span className="text-rose-500">*</span>
+            </Label>
+            {isLoadingTemplates ? (
+              <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading templates…
+              </div>
+            ) : (
+              <Select
+                value={selectedTemplate}
+                onValueChange={handleTemplateChange}
+                disabled={isSendingEmail}
+              >
+                <SelectTrigger id="template-select">
+                  <SelectValue placeholder="Select an email template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map((template) => (
+                    <SelectItem key={template.code} value={template.code}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {template && (
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 space-y-2">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                  Subject
+                </span>
+                <p className="text-sm text-[#111827]">{template.subject}</p>
+              </div>
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                  Description
+                </span>
+                <p className="text-sm text-[#6B7280]">
+                  {template.description || "No description provided."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {template && template.variables.length > 0 && (
+            <div className="space-y-3">
+              <div className="text-sm font-semibold text-[#111827]">
+                Template Variables
+              </div>
+              <div className="space-y-3">
+                {template.variables.map((variable) => {
+                  const isUserField = userFieldKeys.includes(variable.key);
+                  const currentValue = variables[variable.key] || "";
+                  const isDateField =
+                    variable.key.toLowerCase().includes("date") ||
+                    variable.label.toLowerCase().includes("date");
+
+                  return (
+                    <div key={variable.key} className="space-y-1.5">
+                      <Label
+                        htmlFor={`var-${variable.key}`}
+                        className="text-sm flex items-center gap-2"
+                      >
+                        <span>
+                          {variable.label}
+                          {variable.required && (
+                            <span className="text-rose-500 ml-1">*</span>
+                          )}
+                        </span>
+                        {isUserField && (
+                          <span className="text-xs text-blue-600 font-normal">
+                            (auto-filled)
+                          </span>
+                        )}
+                      </Label>
+                      {isDateField ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !currentValue && "text-muted-foreground",
+                              )}
+                              disabled={isSendingEmail}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {currentValue ? (
+                                format(new Date(currentValue), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-[300px] p-0"
+                            align="start"
+                          >
+                            <Calendar
+                              className="w-full"
+                              mode="single"
+                              selected={
+                                currentValue
+                                  ? new Date(currentValue)
+                                  : undefined
+                              }
+                              onSelect={(date) => {
+                                if (date) {
+                                  handleVariableChange(
+                                    variable.key,
+                                    format(date, "yyyy-MM-dd"),
+                                  );
+                                }
+                              }}
+                              disabled={isSendingEmail}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <Input
+                          id={`var-${variable.key}`}
+                          value={currentValue}
+                          onChange={(e) =>
+                            handleVariableChange(variable.key, e.target.value)
+                          }
+                          placeholder={`Enter ${variable.label.toLowerCase()}`}
+                          disabled={isSendingEmail}
+                          required={variable.required}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="mt-6">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSendingEmail}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSendEmail}
+            disabled={
+              !selectedTemplate || !isAllVariablesFilled() || isSendingEmail
+            }
+          >
+            {isSendingEmail ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending…
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Send Email
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

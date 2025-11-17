@@ -13,10 +13,28 @@ export interface LoginResponse {
   role: string;
   isSuperAdmin: boolean;
   refreshToken?: string | null;
+  requiresPasswordChange?: boolean;
 }
 
 export const login = async (payload: LoginPayload) => {
   const { data } = await apiClient.post<LoginResponse>("/auth/login", payload);
+  return data;
+};
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+}
+
+export const changePassword = async (payload: ChangePasswordPayload) => {
+  const { data } = await apiClient.post<ChangePasswordResponse>(
+    "/auth/change-password",
+    payload,
+  );
   return data;
 };
 

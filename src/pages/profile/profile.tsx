@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +9,7 @@ import { LockKeyhole, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuthStore } from "@/stores/auth-store";
 
 type TabKey = "profile" | "password";
 
@@ -35,7 +37,9 @@ const passwordSchema = z
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [tab, setTab] = React.useState<TabKey>("profile");
+  const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
 
   // You can prefill from your auth store if available
   const profileForm = useForm<ProfileFormValues>({
@@ -70,6 +74,10 @@ export default function Profile() {
     }
   });
 
+  const handleChangePasswordClick = () => {
+    void navigate("/change-password");
+  };
+
   const submitPassword = passwordForm.handleSubmit(async (_values) => {
     const t = toast.loading("Updating password…");
     try {
@@ -77,7 +85,7 @@ export default function Profile() {
       // await api.updatePassword(values)
       await new Promise((r) => setTimeout(r, 600));
       toast.success("Password updated", { id: t });
-      passwordForm.reset({
+      void passwordForm.reset({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
@@ -98,12 +106,14 @@ export default function Profile() {
             icon={<UserIcon className="h-4 w-4" />}
             label="User profile"
           />
-          <TabButton
-            active={tab === "password"}
-            onClick={() => setTab("password")}
-            icon={<LockKeyhole className="h-4 w-4" />}
-            label="Change password"
-          />
+          {!isSuperAdmin && (
+            <TabButton
+              active={tab === "password"}
+              onClick={handleChangePasswordClick}
+              icon={<LockKeyhole className="h-4 w-4" />}
+              label="Change password"
+            />
+          )}
         </div>
 
         {/* Content */}

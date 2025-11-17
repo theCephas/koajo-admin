@@ -47,11 +47,28 @@ export function LoginPage() {
 
   const { mutateAsync, isPending } = useLoginMutation();
 
+  // Track if we're navigating to change password to prevent auto-redirect
+  const navigatingToChangePassword = useRef(false);
+
   const onSubmit = useCallback(
     async (values: LoginFormValues) => {
       const toastId = toast.loading("Signing you in...");
       try {
         const response = await mutateAsync(values);
+
+        // Check if password change is required
+        if (response.requiresPasswordChange) {
+          toast.dismiss(toastId);
+          toast.info("Please change your password to continue", {
+            duration: 3000,
+          });
+          // Store auth but navigate to change password
+          navigatingToChangePassword.current = true;
+          setAuth(response, { rememberMe: values.rememberMe });
+          void navigate("/change-password", { replace: true });
+          return;
+        }
+
         // single store update, no loops
         setAuth(response, { rememberMe: values.rememberMe });
         toast.success("Welcome back to Koajo 👋", {
@@ -65,13 +82,17 @@ export function LoginPage() {
         toast.error(message, { id: toastId, duration: 4000 });
       }
     },
-    [mutateAsync, setAuth],
+    [mutateAsync, setAuth, navigate],
   );
 
   // Guard the redirect to only run on false -> true transitions (prevents StrictMode double-invoke loops)
   const prevAuthRef = useRef(isAuthenticated);
   useEffect(() => {
-    if (!prevAuthRef.current && isAuthenticated) {
+    if (
+      !prevAuthRef.current &&
+      isAuthenticated &&
+      !navigatingToChangePassword.current
+    ) {
       // defer to next tick to avoid synchronous update during mount effects
       const id = setTimeout(() => navigate("/", { replace: true }), 0);
       return () => clearTimeout(id);

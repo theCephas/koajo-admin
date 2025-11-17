@@ -4,6 +4,7 @@ import { RootLayout } from "@/layouts/root-layout";
 import { AnalyticsPage } from "@/pages/analytics/analytics-page";
 import { DashboardPage } from "@/pages/dashboard/dashboard-page";
 import { LoginPage } from "@/pages/auth/login-page";
+import { ChangePasswordPage } from "@/pages/auth/change-password-page";
 import { RequestAccessPage } from "@/pages/auth/request-access-page";
 import { NotFoundPage } from "@/pages/not-found/not-found-page";
 import { SettingsPage } from "@/pages/settings/settings-page";
@@ -123,5 +124,13 @@ export const router = createBrowserRouter([
   {
     path: "/request-access",
     element: <RequestAccessPage />,
+  },
+  {
+    path: "/change-password",
+    element: (
+      <ProtectedRoute>
+        <ChangePasswordPage />
+      </ProtectedRoute>
+    ),
   },
 ]);

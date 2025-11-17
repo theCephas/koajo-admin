@@ -36,7 +36,7 @@ export function PermissionsSelector({
     if (!debouncedSearch) return base;
     const query = debouncedSearch.toLowerCase();
     return base.filter((permission) => {
-      const code = permission.code.toLowerCase();
+      const code = permission.id;
       const name = toDisplayText(permission.name).toLowerCase();
       const description = toDisplayText(permission.description).toLowerCase();
       return (
@@ -47,32 +47,30 @@ export function PermissionsSelector({
     });
   }, [permissions, debouncedSearch]);
 
-  const toggleSelection = (code: string) => {
-    if (selectedSet.has(code)) {
-      onSelectionChange(selectedCodes.filter((item) => item !== code));
+  const toggleSelection = (id: string) => {
+    if (selectedSet.has(id)) {
+      onSelectionChange(selectedCodes.filter((item) => item !== id));
     } else {
-      onSelectionChange([...selectedCodes, code]);
+      onSelectionChange([...selectedCodes, id]);
     }
   };
 
   const allFilteredSelected =
     filteredPermissions.length > 0 &&
-    filteredPermissions.every((permission) => selectedSet.has(permission.code));
+    filteredPermissions.every((permission) => selectedSet.has(permission.id));
 
   const handleToggleAllFiltered = () => {
     if (allFilteredSelected) {
       const filteredCodes = new Set(
-        filteredPermissions.map((permission) => permission.code),
+        filteredPermissions.map((permission) => permission.id),
       );
-      onSelectionChange(
-        selectedCodes.filter((code) => !filteredCodes.has(code)),
-      );
+      onSelectionChange(selectedCodes.filter((id) => !filteredCodes.has(id)));
       return;
     }
 
     const merged = new Set(selectedCodes);
     filteredPermissions.forEach((permission) => {
-      merged.add(permission.code);
+      merged.add(permission.id);
     });
     onSelectionChange(Array.from(merged));
   };
@@ -94,7 +92,7 @@ export function PermissionsSelector({
         <button
           type="button"
           onClick={handleToggleAllFiltered}
-          className="text-xs font-medium uppercase tracking-wide text-[#FF8C42] hover:text-[#E67836]"
+          className="text-xs font-medium uppercase tracking-wide text-[#FF8C42] hover:text-[#E67836] cursor-pointer"
           disabled={filteredPermissions.length === 0 || disabled || loading}
         >
           {allFilteredSelected ? "Clear filtered" : "Select filtered"}
@@ -117,12 +115,12 @@ export function PermissionsSelector({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredPermissions.map((permission) => {
-            const checked = selectedSet.has(permission.code);
+            const checked = selectedSet.has(permission.id);
 
             return (
               <label
                 key={permission.id ?? permission.code}
-                className={`flex cursor-pointer flex-col gap-2 rounded-2xl border p-4 transition-colors ${
+                className={`flex cursor-pointer flex-col gap-2 rounded-2xl border p-4 transition-colors overflow-hidden ${
                   checked
                     ? "border-[#FF8C42] bg-[#FFF5ED]"
                     : "border-[#E5E7EB] bg-white hover:border-[#D1D5DB]"
@@ -132,13 +130,13 @@ export function PermissionsSelector({
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() => toggleSelection(permission.code)}
+                    onChange={() => toggleSelection(permission.id)}
                     disabled={disabled}
                     className="mt-1 h-4 w-4 rounded border-[#D1D5DB] text-[#FF8C42] focus:ring-[#FF8C42]"
-                    aria-label={`Permission ${permission.code}`}
+                    aria-label={`Permission ${permission.id}`}
                   />
                   <div className="space-y-1">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-[#FF8C42]">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[#FF8C42] whitespace-normal break-all">
                       {permission.code}
                     </div>
                     <div className="text-sm font-semibold text-[#111827]">

@@ -217,8 +217,8 @@ export default function AdminAccessPage() {
   } | null>(null);
 
   const [selectedRoleIds, setSelectedRoleIds] = React.useState<string[]>([]);
-  const [allowCodes, setAllowCodes] = React.useState<string[]>([]);
-  const [denyCodes, setDenyCodes] = React.useState<string[]>([]);
+  const [allowIds, setAllowIds] = React.useState<string[]>([]);
+  const [denyIds, setDenyIds] = React.useState<string[]>([]);
 
   const { mutate: replaceRoles, isPending: savingRoles } =
     useReplaceAdminRolesMutation({
@@ -261,15 +261,15 @@ export default function AdminAccessPage() {
         ),
     });
 
-  const onAllowChange = (codes: string[]) => {
-    const unique = Array.from(new Set(codes));
-    setAllowCodes(unique);
-    setDenyCodes((prev) => prev.filter((c) => !unique.includes(c)));
+  const onAllowChange = (ids: string[]) => {
+    const unique = Array.from(new Set(ids));
+    setAllowIds(unique);
+    setDenyIds((prev) => prev.filter((id) => !unique.includes(id)));
   };
-  const onDenyChange = (codes: string[]) => {
-    const unique = Array.from(new Set(codes));
-    setDenyCodes(unique);
-    setAllowCodes((prev) => prev.filter((c) => !unique.includes(c)));
+  const onDenyChange = (ids: string[]) => {
+    const unique = Array.from(new Set(ids));
+    setDenyIds(unique);
+    setAllowIds((prev) => prev.filter((id) => !unique.includes(id)));
   };
 
   const openRolesDialog = React.useCallback(
@@ -286,13 +286,13 @@ export default function AdminAccessPage() {
     (row: {
       id: string;
       email: string;
-      explicitPermissions: { code: string }[];
-      deniedPermissions: { code: string }[];
+      explicitPermissions: { id: string }[];
+      deniedPermissions: { id: string }[];
     }) => {
       setActiveAdminId(row.id);
       setActiveAdminEmail(row.email);
-      setAllowCodes(row.explicitPermissions?.map((p) => p.code) ?? []);
-      setDenyCodes(row.deniedPermissions?.map((p) => p.code) ?? []);
+      setAllowIds(row.explicitPermissions?.map((p) => p.id) ?? []);
+      setDenyIds(row.deniedPermissions?.map((p) => p.id) ?? []);
       setPermsOpen(true);
     },
     [],
@@ -588,7 +588,7 @@ export default function AdminAccessPage() {
               </div>
               <PermissionsSelector
                 permissions={permissions}
-                selectedCodes={allowCodes}
+                selectedCodes={allowIds}
                 onSelectionChange={onAllowChange}
                 loading={permissionsLoading}
                 disabled={savingPerms}
@@ -600,7 +600,7 @@ export default function AdminAccessPage() {
               </div>
               <PermissionsSelector
                 permissions={permissions}
-                selectedCodes={denyCodes}
+                selectedCodes={denyIds}
                 onSelectionChange={onDenyChange}
                 loading={permissionsLoading}
                 disabled={savingPerms}
@@ -621,7 +621,7 @@ export default function AdminAccessPage() {
                 activeAdminId &&
                 adjustPerms({
                   adminId: activeAdminId,
-                  payload: { allow: allowCodes, deny: denyCodes },
+                  payload: { allow: allowIds, deny: denyIds },
                 })
               }
             >

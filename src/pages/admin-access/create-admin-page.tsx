@@ -79,20 +79,16 @@ export default function CreateAdminPage() {
     },
   });
 
-  const handleAllowChange = (codes: string[]) => {
-    const uniqueCodes = Array.from(new Set(codes));
-    setAllowPermissions(uniqueCodes);
-    setDenyPermissions((prev) =>
-      prev.filter((code) => !uniqueCodes.includes(code)),
-    );
+  const handleAllowChange = (ids: string[]) => {
+    const uniqueIds = Array.from(new Set(ids));
+    setAllowPermissions(uniqueIds);
+    setDenyPermissions((prev) => prev.filter((id) => !uniqueIds.includes(id)));
   };
 
-  const handleDenyChange = (codes: string[]) => {
-    const uniqueCodes = Array.from(new Set(codes));
-    setDenyPermissions(uniqueCodes);
-    setAllowPermissions((prev) =>
-      prev.filter((code) => !uniqueCodes.includes(code)),
-    );
+  const handleDenyChange = (ids: string[]) => {
+    const uniqueIds = Array.from(new Set(ids));
+    setDenyPermissions(uniqueIds);
+    setAllowPermissions((prev) => prev.filter((id) => !uniqueIds.includes(id)));
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -125,22 +121,14 @@ export default function CreateAdminPage() {
       return;
     }
 
-    const codeToId = new Map(
-      permissions.map((permission) => [permission.code, permission.id]),
-    );
-    const resolvePermissionIds = (codes: string[]) =>
-      codes
-        .map((code) => codeToId.get(code))
-        .filter((id): id is string => Boolean(id));
-
     const payload = {
       email: trimmedEmail,
       firstName: trimmedFirst,
       lastName: trimmedLast,
       phoneNumber: trimmedPhone,
       roleIds,
-      allowPermissions: resolvePermissionIds(allowPermissions),
-      denyPermissions: resolvePermissionIds(denyPermissions),
+      allowPermissions,
+      denyPermissions,
       generatePassword,
       inviteTemplateCode: trimmedTemplate,
       ...(generatePassword ? {} : { password: trimmedPassword }),

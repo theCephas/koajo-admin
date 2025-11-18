@@ -12,6 +12,7 @@ import {
   getAccountById,
   getAccounts,
   getAccountCurrentPods,
+  getAccountPayments,
   updateAccountNotifications,
   updateAccountStatus,
   toggleAccountStatus,
@@ -20,6 +21,8 @@ import {
   deleteAccount,
   type AccountAchievementsResponse,
   type AccountCurrentPodsResponse,
+  type AccountPaymentsResponse,
+  type AccountPaymentsQueryParams,
   type AccountDetails,
   type AccountsQueryParams,
   type AccountsResponse,
@@ -37,6 +40,7 @@ export type AccountsQueryError = AxiosError<{ message?: string }>;
 export type AccountQueryError = AxiosError<{ message?: string }>;
 export type AccountAchievementsQueryError = AxiosError<{ message?: string }>;
 export type AccountCurrentPodsQueryError = AxiosError<{ message?: string }>;
+export type AccountPaymentsQueryError = AxiosError<{ message?: string }>;
 export type UpdateAccountNotificationsError = AxiosError<{ message?: string }>;
 export type UpdateAccountStatusError = AxiosError<{ message?: string }>;
 export type ToggleAccountStatusError = AxiosError<{ message?: string }>;
@@ -145,6 +149,43 @@ export const useAccountCurrentPodsQuery = (
   >({
     queryKey: accountCurrentPodsQueryKey(accountId),
     queryFn: () => getAccountCurrentPods(accountId),
+    enabled: Boolean(accountId),
+    ...options,
+  });
+
+export const accountPaymentsQueryKey = (
+  accountId: string,
+  params: AccountPaymentsQueryParams = {},
+) =>
+  [
+    "account",
+    accountId,
+    "payments",
+    {
+      limit: params.limit ?? 50,
+      offset: params.offset ?? 0,
+      status: params.status ?? "",
+    },
+  ] as const;
+
+export const useAccountPaymentsQuery = (
+  accountId: string,
+  params: AccountPaymentsQueryParams = {},
+  options?: UseQueryOptions<
+    AccountPaymentsResponse,
+    AccountPaymentsQueryError,
+    AccountPaymentsResponse,
+    ReturnType<typeof accountPaymentsQueryKey>
+  >,
+) =>
+  useQuery<
+    AccountPaymentsResponse,
+    AccountPaymentsQueryError,
+    AccountPaymentsResponse,
+    ReturnType<typeof accountPaymentsQueryKey>
+  >({
+    queryKey: accountPaymentsQueryKey(accountId, params),
+    queryFn: () => getAccountPayments(accountId, params),
     enabled: Boolean(accountId),
     ...options,
   });

@@ -349,6 +349,46 @@ export const getAccountCurrentPods = async (accountId: string) => {
   return data;
 };
 
+export interface AccountPayment {
+  id: string;
+  podId: string;
+  podPlanCode: string;
+  amount: string;
+  currency: string;
+  status: string;
+  stripeReference: string;
+  recordedAt: string;
+}
+
+export interface AccountPaymentsResponse {
+  total: number;
+  items: AccountPayment[];
+}
+
+export interface AccountPaymentsQueryParams {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}
+
+export const getAccountPayments = async (
+  accountId: string,
+  { limit = 50, offset = 0, status }: AccountPaymentsQueryParams = {},
+) => {
+  const { data } = await apiClient.get<AccountPaymentsResponse>(
+    `accounts/${accountId}/payments`,
+    {
+      params: {
+        limit,
+        offset,
+        status: status ?? undefined,
+      },
+    },
+  );
+
+  return data;
+};
+
 export type AnnouncementChannel = "email" | "in-app";
 export type AnnouncementSeverity =
   | "success"

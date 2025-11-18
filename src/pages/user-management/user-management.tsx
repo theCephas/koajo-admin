@@ -538,9 +538,9 @@ export default function UserManagement() {
           return (
             <div className="flex items-center gap-3">
               <AccountAvatar account={account} />
-              <div className="flex flex-col">
+              <div className="flex flex-col max-w-[250px]">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold text-[#111827]">
+                  <span className="text-sm font-semibold text-[#111827] truncate">
                     {getAccountDisplayName(account)}
                   </span>
                   {flagReasons.length > 0 && (
@@ -558,7 +558,9 @@ export default function UserManagement() {
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-[#6B7280]">{account.email}</span>
+                <span className="text-xs text-[#6B7280] truncate">
+                  {account.email}
+                </span>
               </div>
             </div>
           );
@@ -575,6 +577,26 @@ export default function UserManagement() {
             </span>
           </div>
         ),
+      },
+      {
+        key: "bankAccount",
+        label: "BANK DETAILS",
+        width: 200,
+        render: (_, account) => {
+          if (!account.bankAccount) {
+            return <span className="text-sm text-[#9CA3AF]">—</span>;
+          }
+          return (
+            <div className="flex flex-col text-sm text-[#374151] max-w-[250px]">
+              <span className="font-medium truncate">
+                {account.bankAccount.bankName}
+              </span>
+              <span className="text-xs text-[#9CA3AF]">
+                ****{account.bankAccount.accountLast4}
+              </span>
+            </div>
+          );
+        },
       },
       {
         key: "isActive",

@@ -136,6 +136,15 @@ export interface AccountSummary {
   transactionNotificationsEnabled: boolean;
   kycStatus?: string | null;
   bankAccountLinked?: boolean;
+  bankAccount?: {
+    bankName: string;
+    paymentMethodId: string;
+    accountLast4: string;
+    customerId: string;
+    bankAccountId: string;
+    linkedAt: string;
+    updatedAt: string;
+  } | null;
   requiresFraudReview?: boolean;
   fraudReviewReason?: string | null;
   missedPaymentFlag?: boolean;

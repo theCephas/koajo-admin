@@ -1165,6 +1165,12 @@ const UserPodsModal = ({
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Contributed
                     </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Payout Position
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Payout Date
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1208,6 +1214,12 @@ const UserPodsModal = ({
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-[#111827]">
                         ${pod.totalContributed}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#374151]">
+                        {pod.joinOrder !== null ? `#${pod.joinOrder}` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#6B7280]">
+                        {pod.payoutDate ? formatDate(pod.payoutDate) : "—"}
                       </td>
                     </tr>
                   ))}
@@ -1329,6 +1341,20 @@ export default function UserManagementDetailsPage() {
                 <InfoRow
                   label="Phone number"
                   value={account.phoneNumber ?? "No phone number on record"}
+                />
+                <InfoRow
+                  label="Bank name"
+                  value={
+                    account.bankAccount?.bankName ?? "No bank account linked"
+                  }
+                />
+                <InfoRow
+                  label="Account number"
+                  value={
+                    account.bankAccount
+                      ? `****${account.bankAccount.accountLast4}`
+                      : "—"
+                  }
                 />
               </div>
             </div>

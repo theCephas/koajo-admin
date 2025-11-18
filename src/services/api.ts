@@ -646,17 +646,14 @@ export const getPayouts = async ({
   timeframe,
   status,
 }: PayoutsQueryParams = {}) => {
-  const { data } = await apiClient.get<PayoutsResponse>(
-    "/v1/admin/pods/payouts",
-    {
-      params: {
-        limit,
-        offset,
-        timeframe: timeframe ?? undefined,
-        status: status ?? undefined,
-      },
+  const { data } = await apiClient.get<PayoutsResponse>("/pods/payouts", {
+    params: {
+      limit,
+      offset,
+      timeframe: timeframe ?? undefined,
+      status: status ?? undefined,
     },
-  );
+  });
 
   return data;
 };

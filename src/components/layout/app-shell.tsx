@@ -2,8 +2,6 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   HiOutlineViewGrid,
   HiOutlineUser,
-  HiOutlineClipboardList,
-  HiOutlineDocumentText,
   HiOutlineBell,
   HiOutlineCube,
   HiOutlineTemplate,
@@ -37,11 +35,11 @@ import { useState } from "react";
 
 const navigation = [
   { label: "Dashboard", to: "/", icon: HiOutlineViewGrid },
-  {
-    label: "KYC Management",
-    to: "/kyc-management",
-    icon: HiOutlineDocumentText,
-  },
+  // {
+  //   label: "KYC Management",
+  //   to: "/kyc-management",
+  //   icon: HiOutlineDocumentText,
+  // },
   {
     label: "Users Management",
     to: "/users-management",
@@ -69,11 +67,11 @@ const navigation = [
     icon: HiOutlineKey,
   },
   { label: "Announcements", to: "/notifications", icon: HiOutlineBell },
-  {
-    label: "Contributions & Allocations",
-    to: "/contributions-and-allocations",
-    icon: HiOutlineClipboardList,
-  },
+  // {
+  //   label: "Contributions & Allocations",
+  //   to: "/contributions-and-allocations",
+  //   icon: HiOutlineClipboardList,
+  // },
   // { label: "Mail", to: "/mail", icon: HiOutlineMail, badge: "" },
   // { label: "Chat", to: "/chat", icon: HiOutlineChat },
   // { label: "File Manager", to: "/files", icon: HiOutlineFolder },

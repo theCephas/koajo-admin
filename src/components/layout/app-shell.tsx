@@ -7,6 +7,7 @@ import {
   HiOutlineTemplate,
   HiOutlineShieldCheck,
   HiOutlineKey,
+  HiOutlineCash,
   // HiChevronRight,
 } from "react-icons/hi";
 
@@ -55,6 +56,11 @@ const navigation = [
     label: "Pod Plans",
     to: "/pod-plans-management",
     icon: HiOutlineTemplate,
+  },
+  {
+    label: "Payout Management",
+    to: "/payout-management",
+    icon: HiOutlineCash,
   },
   {
     label: "Roles & Permissions",

@@ -617,6 +617,50 @@ export const deletePodPlan = async (planId: string) => {
   await apiClient.delete(`/pod-plans/${planId}`);
 };
 
+export interface PayoutSummary {
+  id: string;
+  amount: string;
+  currency: string;
+  status: string;
+  podId: string;
+  podPlanCode: string;
+  description: Record<string, unknown>;
+  recordedAt: string;
+}
+
+export interface PayoutsResponse {
+  total: number;
+  items: PayoutSummary[];
+}
+
+export interface PayoutsQueryParams {
+  limit?: number;
+  offset?: number;
+  timeframe?: string;
+  status?: string;
+}
+
+export const getPayouts = async ({
+  limit = 50,
+  offset = 0,
+  timeframe,
+  status,
+}: PayoutsQueryParams = {}) => {
+  const { data } = await apiClient.get<PayoutsResponse>(
+    "/v1/admin/pods/payouts",
+    {
+      params: {
+        limit,
+        offset,
+        timeframe: timeframe ?? undefined,
+        status: status ?? undefined,
+      },
+    },
+  );
+
+  return data;
+};
+
 export interface PermissionDefinition {
   id: string;
   code: string;

@@ -1090,12 +1090,14 @@ const UserPodsModal = ({
   isLoading: boolean;
   error: AccountCurrentPodsQueryError | null;
 }) => {
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", {
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "—";
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 0,
     }).format(value);
+  };
 
   const formatDate = (isoString?: string | null) => {
     if (!isoString) return "—";
@@ -1216,7 +1218,11 @@ const UserPodsModal = ({
                         ${pod.totalContributed}
                       </td>
                       <td className="px-4 py-3 text-sm text-[#374151]">
-                        {pod.joinOrder !== null ? `#${pod.joinOrder}` : "—"}
+                        {pod.finalOrder
+                          ? `#${pod.finalOrder}`
+                          : pod.joinOrder !== null
+                            ? `#${pod.joinOrder}`
+                            : "—"}
                       </td>
                       <td className="px-4 py-3 text-sm text-[#6B7280]">
                         {pod.payoutDate ? formatDate(pod.payoutDate) : "—"}

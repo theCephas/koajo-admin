@@ -30,8 +30,10 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-const percentFormatter = (value: number) =>
-  `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+const percentFormatter = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+};
 
 const parseMonthLabel = (month: string) => {
   const [year, monthIndex] = month.split("-");

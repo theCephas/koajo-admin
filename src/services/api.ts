@@ -493,18 +493,21 @@ export interface PodsStatsResponse {
 
 export interface PodsQueryParams {
   search?: string;
+  status?: string;
   limit?: number;
   offset?: number;
 }
 
 export const getPods = async ({
   search,
+  status,
   limit = 20,
   offset = 0,
 }: PodsQueryParams) => {
   const { data } = await apiClient.get<PodsResponse>("/pods", {
     params: {
       search: search ?? undefined,
+      status: status ?? undefined,
       limit,
       offset,
     },

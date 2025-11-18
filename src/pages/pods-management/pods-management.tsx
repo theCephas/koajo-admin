@@ -5,6 +5,13 @@ import { Loader2, Search } from "lucide-react";
 import DataTable, { type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 import {
   usePodStatsQuery,
@@ -104,6 +111,7 @@ export default function PodsManagementPage() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -112,10 +120,11 @@ export default function PodsManagementPage() {
   const queryParams = useMemo(
     () => ({
       search: debouncedSearch || undefined,
+      status: status || undefined,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     }),
-    [debouncedSearch, page, pageSize],
+    [debouncedSearch, status, page, pageSize],
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } =
@@ -147,6 +156,10 @@ export default function PodsManagementPage() {
   useEffect(() => {
     setPage(1);
   }, [pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [status]);
 
   const columns = useMemo<Column<PodSummary>[]>(
     () => [
@@ -321,6 +334,20 @@ export default function PodsManagementPage() {
               aria-label="Search pods"
             />
           </div>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[180px]" aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="filled">Filled</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="text-xs font-medium uppercase tracking-wide text-[#9CA3AF]">
             Total pods: <span className="text-[#111827]">{totalCount}</span>
           </div>
@@ -363,7 +390,7 @@ export default function PodsManagementPage() {
         emptyStateDescription={
           isLoading
             ? "Fetching pod records."
-            : "Try adjusting your search to find different pods."
+            : "Try adjusting your search or status filter to find different pods."
         }
         className="mt-2"
       />

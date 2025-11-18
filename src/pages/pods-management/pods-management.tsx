@@ -340,12 +340,11 @@ export default function PodsManagementPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="filled">Filled</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="grace">Grace</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
           <div className="text-xs font-medium uppercase tracking-wide text-[#9CA3AF]">

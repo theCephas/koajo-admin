@@ -111,7 +111,7 @@ export default function PodsManagementPage() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -120,7 +120,7 @@ export default function PodsManagementPage() {
   const queryParams = useMemo(
     () => ({
       search: debouncedSearch || undefined,
-      status: status || undefined,
+      status: status && status !== "all" ? status : undefined,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     }),
@@ -339,7 +339,7 @@ export default function PodsManagementPage() {
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="filled">Filled</SelectItem>

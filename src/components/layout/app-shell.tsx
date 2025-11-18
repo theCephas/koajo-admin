@@ -68,7 +68,7 @@ const navigation = [
     to: "/admin-access",
     icon: HiOutlineKey,
   },
-  { label: "Notifications", to: "/notifications", icon: HiOutlineBell },
+  { label: "Announcements", to: "/notifications", icon: HiOutlineBell },
   {
     label: "Contributions & Allocations",
     to: "/contributions-and-allocations",

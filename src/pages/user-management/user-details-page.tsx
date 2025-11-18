@@ -1293,6 +1293,44 @@ const PaymentsModal = ({
     }).format(date);
   };
 
+  const getStatusColor = (status: string) => {
+    // Success statuses - green
+    if (
+      ["succeeded", "paid", "completed", "success"].includes(
+        status.toLowerCase(),
+      )
+    ) {
+      return "bg-emerald-50 text-emerald-600";
+    }
+
+    // Processing/pending statuses - amber/yellow
+    if (
+      [
+        "processing",
+        "requires_confirmation",
+        "requires_action",
+        "requires_capture",
+      ].includes(status.toLowerCase())
+    ) {
+      return "bg-amber-50 text-amber-700";
+    }
+
+    // Failed/canceled statuses - red
+    if (
+      ["canceled", "payment_failed", "failed"].includes(status.toLowerCase())
+    ) {
+      return "bg-rose-50 text-rose-600";
+    }
+
+    // Requires payment method - blue
+    if (status.toLowerCase() === "requires_payment_method") {
+      return "bg-blue-50 text-blue-600";
+    }
+
+    // Default - gray
+    return "bg-gray-50 text-gray-600";
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl rounded-2xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
@@ -1363,13 +1401,7 @@ const PaymentsModal = ({
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                            payment.status === "succeeded"
-                              ? "bg-emerald-50 text-emerald-600"
-                              : payment.status === "pending"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-gray-50 text-gray-600"
-                          }`}
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusColor(payment.status)}`}
                         >
                           {payment.status}
                         </span>

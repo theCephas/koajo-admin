@@ -524,6 +524,9 @@ export interface PodMembership {
   accountEmail?: string;
   joinedAt?: string;
   status?: string;
+  finalOrder?: number | null;
+  joinOrder?: number | null;
+  payoutDate?: string | null;
   account?: AccountSummary;
   [key: string]: unknown;
 }

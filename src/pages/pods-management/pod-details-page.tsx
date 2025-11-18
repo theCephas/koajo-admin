@@ -249,9 +249,19 @@ export default function PodDetailsPage() {
                           </div>
                         </div>
                       </div>
-                      <PodStatusBadge
-                        status={String(membership.status ?? "pending")}
-                      />
+                      <div className="flex flex-col items-end gap-1 text-sm">
+                        <div className="font-medium text-[#111827]">
+                          Position:{" "}
+                          {membership.finalOrder
+                            ? `#${membership.finalOrder}`
+                            : membership.joinOrder !== null
+                              ? `#${membership.joinOrder}`
+                              : "—"}
+                        </div>
+                        <div className="text-xs text-[#6B7280]">
+                          Payout: {formatDateTime(membership.payoutDate)}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

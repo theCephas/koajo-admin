@@ -9,10 +9,13 @@ import type { AxiosError } from "axios";
 
 import {
   getPodById,
+  getPodPendingInvites,
   getPods,
   getPodStats,
   swapPodPayouts,
   triggerPodPayout,
+  type PendingInvitesQueryParams,
+  type PendingInvitesResponse,
   type PodDetails,
   type PodsQueryParams,
   type PodsResponse,
@@ -60,6 +63,45 @@ export const usePodQuery = (
   useQuery<PodDetails, PodQueryError>({
     queryKey: podQueryKey(podId),
     queryFn: () => getPodById(podId),
+    enabled: Boolean(podId),
+    ...options,
+  });
+
+export type PendingInvitesQueryError = AxiosError<{ message?: string }>;
+
+export const pendingInvitesQueryKey = (
+  podId: string,
+  params: PendingInvitesQueryParams = {},
+) =>
+  [
+    "pod",
+    podId,
+    "pending-invites",
+    {
+      search: params.search ?? "",
+      limit: params.limit ?? 50,
+      offset: params.offset ?? 0,
+    },
+  ] as const;
+
+export const usePendingInvitesQuery = (
+  podId: string,
+  params: PendingInvitesQueryParams = {},
+  options?: UseQueryOptions<
+    PendingInvitesResponse,
+    PendingInvitesQueryError,
+    PendingInvitesResponse,
+    ReturnType<typeof pendingInvitesQueryKey>
+  >,
+) =>
+  useQuery<
+    PendingInvitesResponse,
+    PendingInvitesQueryError,
+    PendingInvitesResponse,
+    ReturnType<typeof pendingInvitesQueryKey>
+  >({
+    queryKey: pendingInvitesQueryKey(podId, params),
+    queryFn: () => getPodPendingInvites(podId, params),
     enabled: Boolean(podId),
     ...options,
   });

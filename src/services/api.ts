@@ -543,6 +543,44 @@ export const getPodById = async (podId: string) => {
   return data;
 };
 
+export interface PendingInvite {
+  id: string;
+  podId: string;
+  podPlanCode: string;
+  email: string;
+  invitedBy: string;
+  acceptedAt: Record<string, unknown>;
+  accountId: Record<string, unknown>;
+}
+
+export interface PendingInvitesResponse {
+  total: number;
+  items: PendingInvite[];
+}
+
+export interface PendingInvitesQueryParams {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const getPodPendingInvites = async (
+  podId: string,
+  { search, limit = 50, offset = 0 }: PendingInvitesQueryParams = {},
+) => {
+  const { data } = await apiClient.get<PendingInvitesResponse>(
+    `/pods/${podId}/pending-invites`,
+    {
+      params: {
+        search: search ?? undefined,
+        limit,
+        offset,
+      },
+    },
+  );
+  return data;
+};
+
 export interface SwapPayoutPayload {
   firstMembershipId: string;
   secondMembershipId: string;

@@ -562,7 +562,7 @@ export const swapPodPayouts = async (
   payload: SwapPayoutPayload,
 ) => {
   const { data } = await apiClient.post<SwapPayoutResponse>(
-    `/v1/admin/pods/${podId}/swap-payouts`,
+    `/pods/${podId}/swap-payouts`,
     payload,
   );
   return data;

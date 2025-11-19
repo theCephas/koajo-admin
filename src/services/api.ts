@@ -494,6 +494,7 @@ export interface PodsStatsResponse {
 export interface PodsQueryParams {
   search?: string;
   status?: string;
+  hasMembers?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -501,6 +502,7 @@ export interface PodsQueryParams {
 export const getPods = async ({
   search,
   status,
+  hasMembers,
   limit = 20,
   offset = 0,
 }: PodsQueryParams) => {
@@ -508,6 +510,7 @@ export const getPods = async ({
     params: {
       search: search ?? undefined,
       status: status ?? undefined,
+      hasMembers: hasMembers ?? undefined,
       limit,
       offset,
     },

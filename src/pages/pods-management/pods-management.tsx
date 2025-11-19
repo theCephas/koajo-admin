@@ -112,6 +112,7 @@ export default function PodsManagementPage() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [hasMembers, setHasMembers] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -121,10 +122,16 @@ export default function PodsManagementPage() {
     () => ({
       search: debouncedSearch || undefined,
       status: status && status !== "all" ? status : undefined,
+      hasMembers:
+        hasMembers === "true"
+          ? true
+          : hasMembers === "false"
+            ? false
+            : undefined,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     }),
-    [debouncedSearch, status, page, pageSize],
+    [debouncedSearch, status, hasMembers, page, pageSize],
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } =
@@ -160,6 +167,10 @@ export default function PodsManagementPage() {
   useEffect(() => {
     setPage(1);
   }, [status]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [hasMembers]);
 
   const columns = useMemo<Column<PodSummary>[]>(
     () => [
@@ -329,7 +340,7 @@ export default function PodsManagementPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by type or amount"
+              placeholder="Search by pod id, plan code, pod name, amount, member count, lifecycle weeks, or status"
               className="pl-9"
               aria-label="Search pods"
             />
@@ -345,6 +356,16 @@ export default function PodsManagementPage() {
               <SelectItem value="grace">Grace</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={hasMembers} onValueChange={setHasMembers}>
+            <SelectTrigger className="w-[180px]" aria-label="Filter by members">
+              <SelectValue placeholder="All pods" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All pods</SelectItem>
+              <SelectItem value="true">Has members</SelectItem>
+              <SelectItem value="false">No members</SelectItem>
             </SelectContent>
           </Select>
           <div className="text-xs font-medium uppercase tracking-wide text-[#9CA3AF]">

@@ -39,6 +39,7 @@ export const podsQueryKey = (params: PodsQueryParams = {}) =>
     {
       search: params.search ?? "",
       status: params.status ?? "",
+      hasMembers: params.hasMembers ?? undefined,
       limit: params.limit ?? 20,
       offset: params.offset ?? 0,
     },

@@ -60,6 +60,7 @@ import { AccountStatusPill } from "./components/account-status-pill";
 import {
   useAccountAchievementsQuery,
   useAccountCurrentPodsQuery,
+  useAccountPaymentsQuery,
   useAccountQuery,
   useUpdateAccountNotificationsMutation,
   useToggleAccountStatusMutation,
@@ -67,6 +68,7 @@ import {
   useDeleteAccountMutation,
   type AccountAchievementsQueryError,
   type AccountCurrentPodsQueryError,
+  type AccountPaymentsQueryError,
   type AccountQueryError,
   type UpdateAccountNotificationsError,
   accountQueryKey,
@@ -78,6 +80,7 @@ import {
 import type {
   AccountAchievement,
   AccountCurrentPod,
+  AccountPayment,
   AccountDetails,
 } from "@/services/api";
 import {
@@ -231,6 +234,9 @@ const AchievementsSection = ({
   podsCount,
   isPodsLoading,
   onViewPods,
+  paymentsCount,
+  isPaymentsLoading,
+  onViewPayments,
 }: {
   data:
     | {
@@ -245,6 +251,9 @@ const AchievementsSection = ({
   podsCount: number;
   isPodsLoading: boolean;
   onViewPods: () => void;
+  paymentsCount: number;
+  isPaymentsLoading: boolean;
+  onViewPayments: () => void;
 }) => {
   if (isLoading) {
     return (
@@ -277,22 +286,16 @@ const AchievementsSection = ({
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          icon={<Trophy className="h-4 w-4 text-emerald-600" />}
-          label="Total earned"
-          value={`${data?.totalEarned ?? 0}`}
-          tone="emerald"
+          icon={<Medal className="h-4 w-4 text-blue-600" />}
+          label="Achievements earned"
+          value={`${earnedAchievements.length}`}
+          tone="blue"
         />
         <StatCard
           icon={<Target className="h-4 w-4 text-amber-600" />}
           label="Available achievements"
           value={`${data?.totalAvailable ?? 0}`}
           tone="amber"
-        />
-        <StatCard
-          icon={<Medal className="h-4 w-4 text-blue-600" />}
-          label="Achievements earned"
-          value={`${earnedAchievements.length}`}
-          tone="blue"
         />
         <StatCard
           icon={<CircleDollarSign className="h-4 w-4 text-blue-600" />}
@@ -302,6 +305,15 @@ const AchievementsSection = ({
           showButton={podsCount > 0}
           buttonText="View Pods"
           btnClick={onViewPods}
+        />
+        <StatCard
+          icon={<CircleDollarSign className="h-4 w-4 text-emerald-600" />}
+          label="Payments"
+          value={isPaymentsLoading ? "..." : `${paymentsCount}`}
+          tone="emerald"
+          showButton={paymentsCount > 0}
+          buttonText="View"
+          btnClick={onViewPayments}
         />
       </div>
 
@@ -1245,10 +1257,184 @@ const UserPodsModal = ({
   );
 };
 
+const PaymentsModal = ({
+  open,
+  onOpenChange,
+  payments,
+  isLoading,
+  error,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  payments: AccountPayment[];
+  isLoading: boolean;
+  error: AccountPaymentsQueryError | null;
+}) => {
+  const formatCurrency = (value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return "—";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(numValue);
+  };
+
+  const formatDate = (isoString?: string | null) => {
+    if (!isoString) return "—";
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
+
+  const getStatusColor = (status: string) => {
+    // Success statuses - green
+    if (
+      ["succeeded", "paid", "completed", "success"].includes(
+        status.toLowerCase(),
+      )
+    ) {
+      return "bg-emerald-50 text-emerald-600";
+    }
+
+    // Processing/pending statuses - amber/yellow
+    if (
+      [
+        "processing",
+        "requires_confirmation",
+        "requires_action",
+        "requires_capture",
+      ].includes(status.toLowerCase())
+    ) {
+      return "bg-amber-50 text-amber-700";
+    }
+
+    // Failed/canceled statuses - red
+    if (
+      ["canceled", "payment_failed", "failed"].includes(status.toLowerCase())
+    ) {
+      return "bg-rose-50 text-rose-600";
+    }
+
+    // Requires payment method - blue
+    if (status.toLowerCase() === "requires_payment_method") {
+      return "bg-blue-50 text-blue-600";
+    }
+
+    // Default - gray
+    return "bg-gray-50 text-gray-600";
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl rounded-2xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-[18px]">Payment History</DialogTitle>
+          <DialogDescription>
+            All payments recorded for this account.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto -mx-6 px-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-[#6B7280]">
+                Loading payments…
+              </span>
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error.response?.data?.message ??
+                error.message ??
+                "Unable to load payments."}
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] p-8 text-center">
+              <div className="text-sm font-medium text-[#111827]">
+                No payments found
+              </div>
+              <div className="text-xs text-[#6B7280]">
+                Payment records will appear here once transactions are
+                processed.
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#E5E7EB]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Pod Plan
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Stripe Reference
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Recorded At
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => (
+                    <tr
+                      key={payment.id}
+                      className="border-b border-[#E5E7EB] hover:bg-[#F9FAFB]"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-[#111827]">
+                        {payment.podPlanCode}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#374151]">
+                        {formatCurrency(payment.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusColor(payment.status)}`}
+                        >
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#6B7280]">
+                        {payment.stripeReference || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#6B7280]">
+                        {formatDate(payment.recordedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function UserManagementDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const accountId = id ?? "";
   const [podsModalOpen, setPodsModalOpen] = useState(false);
+  const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
 
   const {
     data: account,
@@ -1270,6 +1456,12 @@ export default function UserManagementDetailsPage() {
   } = useAccountCurrentPodsQuery(accountId);
 
   const {
+    data: paymentsData,
+    isLoading: isPaymentsLoading,
+    error: paymentsError,
+  } = useAccountPaymentsQuery(accountId);
+
+  const {
     mutate: updateNotificationPreferences,
     isPending: isUpdatingNotifications,
     error: updateNotificationsError,
@@ -1277,6 +1469,8 @@ export default function UserManagementDetailsPage() {
 
   const pendingNotificationError = updateNotificationsError ?? null;
   const podsCount = pods?.length ?? 0;
+  const paymentsCount = paymentsData?.total ?? 0;
+  const payments = paymentsData?.items ?? [];
 
   const breadcrumbLabel = useMemo(() => {
     if (account) return getAccountDisplayName(account);
@@ -1429,6 +1623,9 @@ export default function UserManagementDetailsPage() {
                 podsCount={podsCount}
                 isPodsLoading={isPodsLoading}
                 onViewPods={() => setPodsModalOpen(true)}
+                paymentsCount={paymentsCount}
+                isPaymentsLoading={isPaymentsLoading}
+                onViewPayments={() => setPaymentsModalOpen(true)}
               />
             </div>
           </div>
@@ -1441,6 +1638,14 @@ export default function UserManagementDetailsPage() {
         pods={pods ?? []}
         isLoading={isPodsLoading}
         error={podsError ?? null}
+      />
+
+      <PaymentsModal
+        open={paymentsModalOpen}
+        onOpenChange={setPaymentsModalOpen}
+        payments={payments}
+        isLoading={isPaymentsLoading}
+        error={paymentsError ?? null}
       />
     </section>
   );

@@ -349,6 +349,46 @@ export const getAccountCurrentPods = async (accountId: string) => {
   return data;
 };
 
+export interface AccountPayment {
+  id: string;
+  podId: string;
+  podPlanCode: string;
+  amount: string;
+  currency: string;
+  status: string;
+  stripeReference: string;
+  recordedAt: string;
+}
+
+export interface AccountPaymentsResponse {
+  total: number;
+  items: AccountPayment[];
+}
+
+export interface AccountPaymentsQueryParams {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}
+
+export const getAccountPayments = async (
+  accountId: string,
+  { limit = 50, offset = 0, status }: AccountPaymentsQueryParams = {},
+) => {
+  const { data } = await apiClient.get<AccountPaymentsResponse>(
+    `accounts/${accountId}/payments`,
+    {
+      params: {
+        limit,
+        offset,
+        status: status ?? undefined,
+      },
+    },
+  );
+
+  return data;
+};
+
 export type AnnouncementChannel = "email" | "in-app";
 export type AnnouncementSeverity =
   | "success"
@@ -453,18 +493,21 @@ export interface PodsStatsResponse {
 
 export interface PodsQueryParams {
   search?: string;
+  status?: string;
   limit?: number;
   offset?: number;
 }
 
 export const getPods = async ({
   search,
+  status,
   limit = 20,
   offset = 0,
 }: PodsQueryParams) => {
   const { data } = await apiClient.get<PodsResponse>("/pods", {
     params: {
       search: search ?? undefined,
+      status: status ?? undefined,
       limit,
       offset,
     },
@@ -484,6 +527,9 @@ export interface PodMembership {
   accountEmail?: string;
   joinedAt?: string;
   status?: string;
+  finalOrder?: number | null;
+  joinOrder?: number | null;
+  payoutDate?: string | null;
   account?: AccountSummary;
   [key: string]: unknown;
 }
@@ -494,6 +540,31 @@ export interface PodDetails extends PodSummary {
 
 export const getPodById = async (podId: string) => {
   const { data } = await apiClient.get<PodDetails>(`/pods/${podId}`);
+  return data;
+};
+
+export interface SwapPayoutPayload {
+  firstMembershipId: string;
+  secondMembershipId: string;
+}
+
+export interface SwapPayoutResponse {
+  podId: string;
+  swaps: {
+    membershipId: string;
+    oldOrder: number;
+    newOrder: number;
+  }[];
+}
+
+export const swapPodPayouts = async (
+  podId: string,
+  payload: SwapPayoutPayload,
+) => {
+  const { data } = await apiClient.post<SwapPayoutResponse>(
+    `/pods/${podId}/swap-payouts`,
+    payload,
+  );
   return data;
 };
 
@@ -569,6 +640,47 @@ export const updatePodPlan = async ({
 
 export const deletePodPlan = async (planId: string) => {
   await apiClient.delete(`/pod-plans/${planId}`);
+};
+
+export interface PayoutSummary {
+  id: string;
+  amount: string;
+  currency: string;
+  status: string;
+  podId: string;
+  podPlanCode: string;
+  description: Record<string, unknown>;
+  recordedAt: string;
+}
+
+export interface PayoutsResponse {
+  total: number;
+  items: PayoutSummary[];
+}
+
+export interface PayoutsQueryParams {
+  limit?: number;
+  offset?: number;
+  timeframe?: string;
+  status?: string;
+}
+
+export const getPayouts = async ({
+  limit = 50,
+  offset = 0,
+  timeframe,
+  status,
+}: PayoutsQueryParams = {}) => {
+  const { data } = await apiClient.get<PayoutsResponse>("/pods/payouts", {
+    params: {
+      limit,
+      offset,
+      timeframe: timeframe ?? undefined,
+      status: status ?? undefined,
+    },
+  });
+
+  return data;
 };
 
 export interface PermissionDefinition {

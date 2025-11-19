@@ -24,6 +24,7 @@ import RoleDetailsPage from "@/pages/roles-management/role-details-page";
 import AdminAccessPage from "@/pages/admin-access/admin-access-page";
 import CreateAdminPage from "@/pages/admin-access/create-admin-page";
 import AdminDetailsPage from "@/pages/admin-access/admin-details-page";
+import PayoutManagementPage from "@/pages/payout-management/payout-management";
 import Profile from "@/pages/profile/profile";
 
 export const router = createBrowserRouter([
@@ -70,6 +71,10 @@ export const router = createBrowserRouter([
       {
         path: "pod-plans-management",
         element: <PodPlansManagementPage />,
+      },
+      {
+        path: "payout-management",
+        element: <PayoutManagementPage />,
       },
       {
         path: "roles-management",

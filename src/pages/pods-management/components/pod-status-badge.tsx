@@ -1,12 +1,15 @@
 import React from "react";
 
 const STATUS_STYLES: Record<string, string> = {
-  open: "bg-emerald-50 text-emerald-600",
+  pending: "bg-amber-50 text-amber-700",
+  open: "bg-blue-50 text-blue-600",
+  grace: "bg-purple-50 text-purple-600",
   active: "bg-emerald-50 text-emerald-600",
+  completed: "bg-gray-100 text-gray-600",
+  // Legacy statuses (keeping for backward compatibility)
   filled: "bg-blue-50 text-blue-600",
   closed: "bg-gray-100 text-gray-600",
   archived: "bg-gray-100 text-gray-500",
-  pending: "bg-amber-50 text-amber-700",
 };
 
 const formatStatus = (status: string) =>

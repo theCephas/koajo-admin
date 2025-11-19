@@ -1,14 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Mail, Phone, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Mail,
+  Phone,
+  Users,
+  ArrowLeftRight,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { usePodQuery, type PodQueryError } from "@/hooks/queries/use-pods";
+import {
+  usePodQuery,
+  useSwapPodPayoutsMutation,
+  type PodQueryError,
+} from "@/hooks/queries/use-pods";
 import { PodStatusBadge } from "./components/pod-status-badge";
 import {
   AccountAvatar,
   getAccountDisplayName,
 } from "@/pages/user-management/components/account-avatar";
+import { toast } from "sonner";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -99,7 +111,50 @@ export default function PodDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const podId = id ?? "";
 
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+
   const { data: pod, isLoading, isError, error } = usePodQuery(podId);
+
+  const swapMutation = useSwapPodPayoutsMutation(podId, {
+    onSuccess: () => {
+      toast.success("Payout positions swapped", {
+        description: "The payout positions have been successfully swapped.",
+      });
+      setSelectedMembers([]);
+    },
+    onError: (error) => {
+      toast.error("Failed to swap positions", {
+        description:
+          error.response?.data?.message ??
+          error.message ??
+          "Unable to swap payout positions.",
+      });
+    },
+  });
+
+  const handleMemberSelect = (membershipId: string) => {
+    setSelectedMembers((prev) => {
+      if (prev.includes(membershipId)) {
+        return prev.filter((id) => id !== membershipId);
+      }
+      if (prev.length >= 2) {
+        return [prev[1], membershipId];
+      }
+      return [...prev, membershipId];
+    });
+  };
+
+  const handleSwap = () => {
+    if (selectedMembers.length === 2) {
+      swapMutation.mutate({
+        firstMembershipId: selectedMembers[0],
+        secondMembershipId: selectedMembers[1],
+      });
+    }
+  };
+
+  const isCustomPod = pod?.type.toLowerCase() === "custom";
+  const canShowSwapButton = isCustomPod && selectedMembers.length === 2;
 
   return (
     <section className="space-y-6">
@@ -184,9 +239,30 @@ export default function PodDetailsPage() {
                   Pod memberships
                 </h2>
                 <p className="text-xs text-[#6B7280]">
-                  Keep track of users that have joined this pod.
+                  {isCustomPod
+                    ? "Select two members to swap their payout positions."
+                    : "Keep track of users that have joined this pod."}
                 </p>
               </div>
+              {canShowSwapButton && (
+                <Button
+                  onClick={handleSwap}
+                  disabled={swapMutation.isPending}
+                  className="inline-flex items-center gap-2"
+                >
+                  {swapMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Swapping...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowLeftRight className="h-4 w-4" />
+                      Swap Positions
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
 
             {pod.memberships.length === 0 ? (
@@ -201,11 +277,23 @@ export default function PodDetailsPage() {
                   const displayName = account
                     ? getAccountDisplayName(account)
                     : (membership.accountEmail ?? "Unknown member");
+                  const membershipId = membership.id ?? "";
+                  const isSelected = selectedMembers.includes(membershipId);
+                  const canSelect = isCustomPod && membershipId;
 
                   return (
                     <div
                       key={membership.id ?? membership.accountId ?? index}
-                      className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] px-4 py-3"
+                      onClick={
+                        canSelect
+                          ? () => handleMemberSelect(membershipId)
+                          : undefined
+                      }
+                      className={`flex flex-wrap items-center justify-between gap-4 rounded-xl border px-4 py-3 transition-all ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                          : "border-[#E5E7EB] bg-white hover:border-[#D1D5DB]"
+                      } ${canSelect ? "cursor-pointer" : ""}`}
                     >
                       <div className="flex items-center gap-3">
                         {account ? (
@@ -249,9 +337,19 @@ export default function PodDetailsPage() {
                           </div>
                         </div>
                       </div>
-                      <PodStatusBadge
-                        status={String(membership.status ?? "pending")}
-                      />
+                      <div className="flex flex-col items-end gap-1 text-sm">
+                        <div className="font-medium text-[#111827]">
+                          Position:{" "}
+                          {membership.finalOrder
+                            ? `#${membership.finalOrder}`
+                            : membership.joinOrder !== null
+                              ? `#${membership.joinOrder}`
+                              : "—"}
+                        </div>
+                        <div className="text-xs text-[#6B7280]">
+                          Payout: {formatDateTime(membership.payoutDate)}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

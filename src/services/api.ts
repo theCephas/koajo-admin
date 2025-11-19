@@ -584,7 +584,7 @@ export const triggerPodPayout = async (
   payload: TriggerPayoutPayload,
 ) => {
   const { data } = await apiClient.post<TriggerPayoutResponse>(
-    `/v1/admin/pods/${podId}/payouts/trigger`,
+    `/pods/${podId}/payouts/trigger`,
     payload,
   );
   return data;

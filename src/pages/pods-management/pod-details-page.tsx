@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   usePodQuery,
   useSwapPodPayoutsMutation,
+  useTriggerPodPayoutMutation,
   type PodQueryError,
 } from "@/hooks/queries/use-pods";
 import { PodStatusBadge } from "./components/pod-status-badge";
@@ -131,6 +132,26 @@ export default function PodDetailsPage() {
       });
     },
   });
+
+  const triggerPayoutMutation = useTriggerPodPayoutMutation(podId, {
+    onSuccess: (data) => {
+      toast.success("Payout initiated", {
+        description: `Payout ${data.payoutId} has been triggered with status: ${data.status}`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to trigger payout", {
+        description:
+          error.response?.data?.message ??
+          error.message ??
+          "Unable to trigger payout for this member.",
+      });
+    },
+  });
+
+  const handleTriggerPayout = (membershipId: string) => {
+    triggerPayoutMutation.mutate({ membershipId });
+  };
 
   const handleMemberSelect = (membershipId: string) => {
     setSelectedMembers((prev) => {
@@ -337,18 +358,41 @@ export default function PodDetailsPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 text-sm">
-                        <div className="font-medium text-[#111827]">
-                          Position:{" "}
-                          {membership.finalOrder
-                            ? `#${membership.finalOrder}`
-                            : membership.joinOrder !== null
-                              ? `#${membership.joinOrder}`
-                              : "—"}
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end gap-1 text-sm">
+                          <div className="font-medium text-[#111827]">
+                            Position:{" "}
+                            {membership.finalOrder
+                              ? `#${membership.finalOrder}`
+                              : membership.joinOrder !== null
+                                ? `#${membership.joinOrder}`
+                                : "—"}
+                          </div>
+                          <div className="text-xs text-[#6B7280]">
+                            Payout: {formatDateTime(membership.payoutDate)}
+                          </div>
                         </div>
-                        <div className="text-xs text-[#6B7280]">
-                          Payout: {formatDateTime(membership.payoutDate)}
-                        </div>
+                        {membershipId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTriggerPayout(membershipId);
+                            }}
+                            disabled={triggerPayoutMutation.isPending}
+                            className="whitespace-nowrap"
+                          >
+                            {triggerPayoutMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Triggering...
+                              </>
+                            ) : (
+                              "Trigger Payout"
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );

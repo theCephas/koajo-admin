@@ -12,12 +12,15 @@ import {
   getPods,
   getPodStats,
   swapPodPayouts,
+  triggerPodPayout,
   type PodDetails,
   type PodsQueryParams,
   type PodsResponse,
   type PodsStatsResponse,
   type SwapPayoutPayload,
   type SwapPayoutResponse,
+  type TriggerPayoutPayload,
+  type TriggerPayoutResponse,
 } from "@/services/api";
 
 export type PodsQueryError = AxiosError<{ message?: string }>;
@@ -99,6 +102,39 @@ export const useSwapPodPayoutsMutation = (
     SwapPayoutPayload
   >({
     mutationFn: (payload) => swapPodPayouts(podId, payload),
+    onSuccess: async (data, variables, onMutateResult, mutationContext) => {
+      await queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
+      if (options?.onSuccess) {
+        await options.onSuccess(
+          data,
+          variables,
+          onMutateResult,
+          mutationContext,
+        );
+      }
+    },
+    ...options,
+  });
+};
+
+export type TriggerPayoutMutationError = AxiosError<{ message?: string }>;
+
+export const useTriggerPodPayoutMutation = (
+  podId: string,
+  options?: UseMutationOptions<
+    TriggerPayoutResponse,
+    TriggerPayoutMutationError,
+    TriggerPayoutPayload
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    TriggerPayoutResponse,
+    TriggerPayoutMutationError,
+    TriggerPayoutPayload
+  >({
+    mutationFn: (payload) => triggerPodPayout(podId, payload),
     onSuccess: async (data, variables, onMutateResult, mutationContext) => {
       await queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
       if (options?.onSuccess) {

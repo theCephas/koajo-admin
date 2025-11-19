@@ -568,6 +568,28 @@ export const swapPodPayouts = async (
   return data;
 };
 
+export interface TriggerPayoutPayload {
+  membershipId: string;
+}
+
+export interface TriggerPayoutResponse {
+  payoutId: string;
+  status: string;
+  stripeReference: string;
+  fee: string;
+}
+
+export const triggerPodPayout = async (
+  podId: string,
+  payload: TriggerPayoutPayload,
+) => {
+  const { data } = await apiClient.post<TriggerPayoutResponse>(
+    `/v1/admin/pods/${podId}/payouts/trigger`,
+    payload,
+  );
+  return data;
+};
+
 export interface PodPlanSummary {
   id: string;
   code: string;

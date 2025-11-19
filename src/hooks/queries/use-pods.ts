@@ -1,14 +1,23 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationOptions,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 
 import {
   getPodById,
   getPods,
   getPodStats,
+  swapPodPayouts,
   type PodDetails,
   type PodsQueryParams,
   type PodsResponse,
   type PodsStatsResponse,
+  type SwapPayoutPayload,
+  type SwapPayoutResponse,
 } from "@/services/api";
 
 export type PodsQueryError = AxiosError<{ message?: string }>;
@@ -71,3 +80,29 @@ export const usePodStatsQuery = (
     staleTime: 5 * 60 * 1000,
     ...options,
   });
+
+export type SwapPayoutMutationError = AxiosError<{ message?: string }>;
+
+export const useSwapPodPayoutsMutation = (
+  podId: string,
+  options?: UseMutationOptions<
+    SwapPayoutResponse,
+    SwapPayoutMutationError,
+    SwapPayoutPayload
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    SwapPayoutResponse,
+    SwapPayoutMutationError,
+    SwapPayoutPayload
+  >({
+    mutationFn: (payload) => swapPodPayouts(podId, payload),
+    onSuccess: (data, variables, context) => {
+      void queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};

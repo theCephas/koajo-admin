@@ -543,6 +543,31 @@ export const getPodById = async (podId: string) => {
   return data;
 };
 
+export interface SwapPayoutPayload {
+  firstMembershipId: string;
+  secondMembershipId: string;
+}
+
+export interface SwapPayoutResponse {
+  podId: string;
+  swaps: {
+    membershipId: string;
+    oldOrder: number;
+    newOrder: number;
+  }[];
+}
+
+export const swapPodPayouts = async (
+  podId: string,
+  payload: SwapPayoutPayload,
+) => {
+  const { data } = await apiClient.post<SwapPayoutResponse>(
+    `/v1/admin/pods/${podId}/swap-payouts`,
+    payload,
+  );
+  return data;
+};
+
 export interface PodPlanSummary {
   id: string;
   code: string;

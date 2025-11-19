@@ -99,9 +99,11 @@ export const useSwapPodPayoutsMutation = (
     SwapPayoutPayload
   >({
     mutationFn: (payload) => swapPodPayouts(podId, payload),
-    onSuccess: (data, variables, context) => {
-      void queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
-      options?.onSuccess?.(data, variables, context);
+    onSuccess: async (data, variables, context) => {
+      await queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
+      if (options?.onSuccess) {
+        await options.onSuccess(data, variables, context);
+      }
     },
     ...options,
   });

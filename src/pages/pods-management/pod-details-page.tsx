@@ -11,6 +11,14 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   usePodQuery,
   useSwapPodPayoutsMutation,
   useTriggerPodPayoutMutation,
@@ -113,6 +121,11 @@ export default function PodDetailsPage() {
   const podId = id ?? "";
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [confirmPayoutOpen, setConfirmPayoutOpen] = useState(false);
+  const [memberToTrigger, setMemberToTrigger] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const { data: pod, isLoading, isError, error } = usePodQuery(podId);
 
@@ -138,6 +151,8 @@ export default function PodDetailsPage() {
       toast.success("Payout initiated", {
         description: `Payout ${data.payoutId} has been triggered with status: ${data.status}`,
       });
+      setConfirmPayoutOpen(false);
+      setMemberToTrigger(null);
     },
     onError: (error) => {
       toast.error("Failed to trigger payout", {
@@ -149,8 +164,23 @@ export default function PodDetailsPage() {
     },
   });
 
-  const handleTriggerPayout = (membershipId: string) => {
-    triggerPayoutMutation.mutate({ membershipId });
+  const handleOpenTriggerConfirm = (
+    membershipId: string,
+    memberName: string,
+  ) => {
+    setMemberToTrigger({ id: membershipId, name: memberName });
+    setConfirmPayoutOpen(true);
+  };
+
+  const handleConfirmTriggerPayout = () => {
+    if (memberToTrigger) {
+      triggerPayoutMutation.mutate({ membershipId: memberToTrigger.id });
+    }
+  };
+
+  const handleCancelTriggerPayout = () => {
+    setConfirmPayoutOpen(false);
+    setMemberToTrigger(null);
   };
 
   const handleMemberSelect = (membershipId: string) => {
@@ -378,19 +408,15 @@ export default function PodDetailsPage() {
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleTriggerPayout(membershipId);
+                              handleOpenTriggerConfirm(
+                                membershipId,
+                                displayName,
+                              );
                             }}
                             disabled={triggerPayoutMutation.isPending}
                             className="whitespace-nowrap"
                           >
-                            {triggerPayoutMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                Triggering...
-                              </>
-                            ) : (
-                              "Trigger Payout"
-                            )}
+                            Trigger Payout
                           </Button>
                         )}
                       </div>
@@ -402,6 +428,41 @@ export default function PodDetailsPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={confirmPayoutOpen} onOpenChange={setConfirmPayoutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Payout Trigger</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to trigger a payout for{" "}
+              <span className="font-semibold">{memberToTrigger?.name}</span>?
+              This action will initiate the payout process and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelTriggerPayout}
+              disabled={triggerPayoutMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmTriggerPayout}
+              disabled={triggerPayoutMutation.isPending}
+            >
+              {triggerPayoutMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Triggering...
+                </>
+              ) : (
+                "Confirm Trigger"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

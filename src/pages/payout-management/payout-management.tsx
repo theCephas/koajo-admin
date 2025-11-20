@@ -113,6 +113,16 @@ export default function PayoutManagementPage() {
   const columns = useMemo<Column<PayoutSummary>[]>(
     () => [
       {
+        key: "id",
+        label: "ID",
+        width: 100,
+        render: (value: string) => (
+          <span className="text-sm font-mono text-[#6B7280]">
+            {value.substring(0, 8)}...
+          </span>
+        ),
+      },
+      {
         key: "podPlanCode",
         label: "POD PLAN",
         width: 140,
@@ -121,12 +131,32 @@ export default function PayoutManagementPage() {
         ),
       },
       {
+        key: "podId",
+        label: "POD ID",
+        width: 100,
+        render: (value: string) => (
+          <span className="text-sm font-mono text-[#6B7280]">
+            {value.substring(0, 8)}...
+          </span>
+        ),
+      },
+      {
         key: "amount",
         label: "AMOUNT",
-        width: 140,
+        width: 120,
         render: (value: string) => (
           <span className="text-sm text-[#374151]">
             {formatCurrency(value)}
+          </span>
+        ),
+      },
+      {
+        key: "currency",
+        label: "CURRENCY",
+        width: 100,
+        render: (value: string) => (
+          <span className="text-sm font-medium text-[#374151]">
+            {value.toUpperCase()}
           </span>
         ),
       },
@@ -144,7 +174,7 @@ export default function PayoutManagementPage() {
       },
       {
         key: "recordedAt",
-        label: "RECORDED AT",
+        label: "PAYOUT DATE",
         width: 200,
         render: (value: string) => (
           <span className="text-sm text-[#6B7280]">{formatDate(value)}</span>

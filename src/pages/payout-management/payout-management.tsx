@@ -153,10 +153,8 @@ export default function PayoutManagementPage() {
       {
         key: "description",
         label: "DESCRIPTION",
-        render: (value: Record<string, unknown>) => (
-          <span className="text-sm text-[#6B7280]">
-            {value && typeof value === "object" ? JSON.stringify(value) : "—"}
-          </span>
+        render: (value: string) => (
+          <span className="text-sm text-[#6B7280]">{value || "—"}</span>
         ),
       },
     ],

@@ -5,11 +5,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { LockKeyhole, User as UserIcon } from "lucide-react";
+import { LockKeyhole, User as UserIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAdminProfileQuery } from "@/hooks/queries/use-admin-profile";
 
 type TabKey = "profile" | "password";
 
@@ -41,7 +42,8 @@ export default function Profile() {
   const [tab, setTab] = React.useState<TabKey>("profile");
   const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
 
-  // You can prefill from your auth store if available
+  const { data: profile, isLoading: isLoadingProfile } = useAdminProfileQuery();
+
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -52,6 +54,20 @@ export default function Profile() {
       phone: "",
     },
   });
+
+  // Populate form when profile data is loaded
+  React.useEffect(() => {
+    if (profile) {
+      profileForm.reset({
+        firstName: profile.firstname || "",
+        lastName: "", // API doesn't return lastName, keep empty
+        username: profile.username || "",
+        email: profile.email || "",
+        phone:
+          typeof profile.phoneNumber === "string" ? profile.phoneNumber : "",
+      });
+    }
+  }, [profile, profileForm]);
 
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -118,80 +134,89 @@ export default function Profile() {
 
         {/* Content */}
         {tab === "profile" ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submitProfile();
-            }}
-            className="space-y-6 p-4 md:p-6"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field
-                label="First Name"
-                required
-                error={profileForm.formState.errors.firstName?.message}
-              >
-                <Input
-                  placeholder="First Name"
-                  {...profileForm.register("firstName")}
-                />
-              </Field>
-              <Field
-                label="Last Name"
-                required
-                error={profileForm.formState.errors.lastName?.message}
-              >
-                <Input
-                  placeholder="Last Name"
-                  {...profileForm.register("lastName")}
-                />
-              </Field>
-              <Field
-                label="Username"
-                required
-                error={profileForm.formState.errors.username?.message}
-              >
-                <Input
-                  placeholder="Username"
-                  {...profileForm.register("username")}
-                />
-              </Field>
-              <Field
-                label="Email"
-                required
-                error={profileForm.formState.errors.email?.message}
-              >
-                <Input
-                  placeholder="Email"
-                  type="email"
-                  {...profileForm.register("email")}
-                />
-              </Field>
-              <div className="md:col-span-2">
+          isLoadingProfile ? (
+            <div className="flex items-center justify-center gap-2 p-8 text-sm text-[#6B7280]">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading profile…
+            </div>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitProfile();
+              }}
+              className="space-y-6 p-4 md:p-6"
+            >
+              <div className="grid gap-4 md:grid-cols-2">
                 <Field
-                  label="Phone"
-                  error={profileForm.formState.errors.phone?.message}
+                  label="First Name"
+                  required
+                  error={profileForm.formState.errors.firstName?.message}
                 >
                   <Input
-                    placeholder="Phone"
-                    {...profileForm.register("phone")}
+                    placeholder="First Name"
+                    {...profileForm.register("firstName")}
                   />
                 </Field>
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  className="rounded-xl bg-[#FF8C42] hover:bg-[#f77f2f]"
-                  disabled={profileForm.formState.isSubmitting}
+                <Field
+                  label="Last Name"
+                  required
+                  error={profileForm.formState.errors.lastName?.message}
                 >
-                  {profileForm.formState.isSubmitting ? "Updating…" : "Update"}
-                </Button>
+                  <Input
+                    placeholder="Last Name"
+                    {...profileForm.register("lastName")}
+                  />
+                </Field>
+                <Field
+                  label="Username"
+                  required
+                  error={profileForm.formState.errors.username?.message}
+                >
+                  <Input
+                    placeholder="Username"
+                    {...profileForm.register("username")}
+                  />
+                </Field>
+                <Field
+                  label="Email"
+                  required
+                  error={profileForm.formState.errors.email?.message}
+                >
+                  <Input
+                    placeholder="Email"
+                    type="email"
+                    {...profileForm.register("email")}
+                  />
+                </Field>
+                <div className="md:col-span-2">
+                  <Field
+                    label="Phone"
+                    error={profileForm.formState.errors.phone?.message}
+                  >
+                    <Input
+                      placeholder="Phone"
+                      {...profileForm.register("phone")}
+                    />
+                  </Field>
+                </div>
               </div>
-            </div>
-          </form>
+
+              <div className="border-t pt-4">
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    className="rounded-xl bg-[#FF8C42] hover:bg-[#f77f2f]"
+                    disabled={profileForm.formState.isSubmitting}
+                  >
+                    {profileForm.formState.isSubmitting
+                      ? "Updating…"
+                      : "Update"}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          )
         ) : (
           <form
             onSubmit={() => void submitPassword}

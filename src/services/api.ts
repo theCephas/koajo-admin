@@ -38,6 +38,40 @@ export const changePassword = async (payload: ChangePasswordPayload) => {
   return data;
 };
 
+export interface AdminRole {
+  id: string;
+  code: string;
+  name: string;
+  description: Record<string, unknown>;
+}
+
+export interface AdminPermission {
+  id: string;
+  code: string;
+  description: Record<string, unknown>;
+}
+
+export interface AdminProfile {
+  id: string;
+  email: string;
+  firstname: string;
+  username: string;
+  phoneNumber: Record<string, unknown>;
+  role: string;
+  isSuperAdmin: boolean;
+  requiresPasswordChange: boolean;
+  updatedAt: Record<string, unknown>;
+  invitedAt: Record<string, unknown>;
+  lastLoginAt: Record<string, unknown>;
+  roles: AdminRole[];
+  permissions: AdminPermission[];
+}
+
+export const getAdminProfile = async () => {
+  const { data } = await apiClient.get<AdminProfile>("/admin/auth/me");
+  return data;
+};
+
 export interface DashboardMetrics {
   totalActiveUsers: {
     value: number;
@@ -712,7 +746,7 @@ export interface PayoutSummary {
   status: string;
   podId: string;
   podPlanCode: string;
-  description: Record<string, unknown>;
+  description: string;
   recordedAt: string;
 }
 

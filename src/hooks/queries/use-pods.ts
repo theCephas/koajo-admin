@@ -9,15 +9,21 @@ import type { AxiosError } from "axios";
 
 import {
   getPodById,
+  getPodPendingInvites,
   getPods,
   getPodStats,
   swapPodPayouts,
+  triggerPodPayout,
+  type PendingInvitesQueryParams,
+  type PendingInvitesResponse,
   type PodDetails,
   type PodsQueryParams,
   type PodsResponse,
   type PodsStatsResponse,
   type SwapPayoutPayload,
   type SwapPayoutResponse,
+  type TriggerPayoutPayload,
+  type TriggerPayoutResponse,
 } from "@/services/api";
 
 export type PodsQueryError = AxiosError<{ message?: string }>;
@@ -33,6 +39,7 @@ export const podsQueryKey = (params: PodsQueryParams = {}) =>
     {
       search: params.search ?? "",
       status: params.status ?? "",
+      hasMembers: params.hasMembers ?? undefined,
       limit: params.limit ?? 20,
       offset: params.offset ?? 0,
     },
@@ -57,6 +64,45 @@ export const usePodQuery = (
   useQuery<PodDetails, PodQueryError>({
     queryKey: podQueryKey(podId),
     queryFn: () => getPodById(podId),
+    enabled: Boolean(podId),
+    ...options,
+  });
+
+export type PendingInvitesQueryError = AxiosError<{ message?: string }>;
+
+export const pendingInvitesQueryKey = (
+  podId: string,
+  params: PendingInvitesQueryParams = {},
+) =>
+  [
+    "pod",
+    podId,
+    "pending-invites",
+    {
+      search: params.search ?? "",
+      limit: params.limit ?? 50,
+      offset: params.offset ?? 0,
+    },
+  ] as const;
+
+export const usePendingInvitesQuery = (
+  podId: string,
+  params: PendingInvitesQueryParams = {},
+  options?: UseQueryOptions<
+    PendingInvitesResponse,
+    PendingInvitesQueryError,
+    PendingInvitesResponse,
+    ReturnType<typeof pendingInvitesQueryKey>
+  >,
+) =>
+  useQuery<
+    PendingInvitesResponse,
+    PendingInvitesQueryError,
+    PendingInvitesResponse,
+    ReturnType<typeof pendingInvitesQueryKey>
+  >({
+    queryKey: pendingInvitesQueryKey(podId, params),
+    queryFn: () => getPodPendingInvites(podId, params),
     enabled: Boolean(podId),
     ...options,
   });
@@ -99,6 +145,39 @@ export const useSwapPodPayoutsMutation = (
     SwapPayoutPayload
   >({
     mutationFn: (payload) => swapPodPayouts(podId, payload),
+    onSuccess: async (data, variables, onMutateResult, mutationContext) => {
+      await queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
+      if (options?.onSuccess) {
+        await options.onSuccess(
+          data,
+          variables,
+          onMutateResult,
+          mutationContext,
+        );
+      }
+    },
+    ...options,
+  });
+};
+
+export type TriggerPayoutMutationError = AxiosError<{ message?: string }>;
+
+export const useTriggerPodPayoutMutation = (
+  podId: string,
+  options?: UseMutationOptions<
+    TriggerPayoutResponse,
+    TriggerPayoutMutationError,
+    TriggerPayoutPayload
+  >,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    TriggerPayoutResponse,
+    TriggerPayoutMutationError,
+    TriggerPayoutPayload
+  >({
+    mutationFn: (payload) => triggerPodPayout(podId, payload),
     onSuccess: async (data, variables, onMutateResult, mutationContext) => {
       await queryClient.invalidateQueries({ queryKey: podQueryKey(podId) });
       if (options?.onSuccess) {

@@ -38,6 +38,40 @@ export const changePassword = async (payload: ChangePasswordPayload) => {
   return data;
 };
 
+export interface AdminRole {
+  id: string;
+  code: string;
+  name: string;
+  description: Record<string, unknown>;
+}
+
+export interface AdminPermission {
+  id: string;
+  code: string;
+  description: Record<string, unknown>;
+}
+
+export interface AdminProfile {
+  id: string;
+  email: string;
+  firstname: string;
+  username: string;
+  phoneNumber: Record<string, unknown>;
+  role: string;
+  isSuperAdmin: boolean;
+  requiresPasswordChange: boolean;
+  updatedAt: Record<string, unknown>;
+  invitedAt: Record<string, unknown>;
+  lastLoginAt: Record<string, unknown>;
+  roles: AdminRole[];
+  permissions: AdminPermission[];
+}
+
+export const getAdminProfile = async () => {
+  const { data } = await apiClient.get<AdminProfile>("/auth/me");
+  return data;
+};
+
 export interface DashboardMetrics {
   totalActiveUsers: {
     value: number;
@@ -494,6 +528,7 @@ export interface PodsStatsResponse {
 export interface PodsQueryParams {
   search?: string;
   status?: string;
+  hasMembers?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -501,6 +536,7 @@ export interface PodsQueryParams {
 export const getPods = async ({
   search,
   status,
+  hasMembers,
   limit = 20,
   offset = 0,
 }: PodsQueryParams) => {
@@ -508,6 +544,7 @@ export const getPods = async ({
     params: {
       search: search ?? undefined,
       status: status ?? undefined,
+      hasMembers: hasMembers ?? undefined,
       limit,
       offset,
     },
@@ -543,6 +580,44 @@ export const getPodById = async (podId: string) => {
   return data;
 };
 
+export interface PendingInvite {
+  id: string;
+  podId: string;
+  podPlanCode: string;
+  email: string;
+  invitedBy: string;
+  acceptedAt: Record<string, unknown>;
+  accountId: Record<string, unknown>;
+}
+
+export interface PendingInvitesResponse {
+  total: number;
+  items: PendingInvite[];
+}
+
+export interface PendingInvitesQueryParams {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const getPodPendingInvites = async (
+  podId: string,
+  { search, limit = 50, offset = 0 }: PendingInvitesQueryParams = {},
+) => {
+  const { data } = await apiClient.get<PendingInvitesResponse>(
+    `/pods/${podId}/pending-invites`,
+    {
+      params: {
+        search: search ?? undefined,
+        limit,
+        offset,
+      },
+    },
+  );
+  return data;
+};
+
 export interface SwapPayoutPayload {
   firstMembershipId: string;
   secondMembershipId: string;
@@ -563,6 +638,28 @@ export const swapPodPayouts = async (
 ) => {
   const { data } = await apiClient.post<SwapPayoutResponse>(
     `/pods/${podId}/swap-payouts`,
+    payload,
+  );
+  return data;
+};
+
+export interface TriggerPayoutPayload {
+  membershipId: string;
+}
+
+export interface TriggerPayoutResponse {
+  payoutId: string;
+  status: string;
+  stripeReference: string;
+  fee: string;
+}
+
+export const triggerPodPayout = async (
+  podId: string,
+  payload: TriggerPayoutPayload,
+) => {
+  const { data } = await apiClient.post<TriggerPayoutResponse>(
+    `/pods/${podId}/payouts/trigger`,
     payload,
   );
   return data;
@@ -649,7 +746,7 @@ export interface PayoutSummary {
   status: string;
   podId: string;
   podPlanCode: string;
-  description: Record<string, unknown>;
+  description: string;
   recordedAt: string;
 }
 

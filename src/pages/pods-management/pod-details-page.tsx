@@ -11,8 +11,18 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   usePodQuery,
+  usePendingInvitesQuery,
   useSwapPodPayoutsMutation,
+  useTriggerPodPayoutMutation,
   type PodQueryError,
 } from "@/hooks/queries/use-pods";
 import { PodStatusBadge } from "./components/pod-status-badge";
@@ -112,8 +122,24 @@ export default function PodDetailsPage() {
   const podId = id ?? "";
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [confirmPayoutOpen, setConfirmPayoutOpen] = useState(false);
+  const [memberToTrigger, setMemberToTrigger] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const { data: pod, isLoading, isError, error } = usePodQuery(podId);
+
+  const isCustomPod = pod?.type.toLowerCase() === "custom";
+
+  const {
+    data: pendingInvitesData,
+    isLoading: isPendingInvitesLoading,
+    isError: isPendingInvitesError,
+    error: pendingInvitesError,
+  } = usePendingInvitesQuery(podId, {}, {
+    enabled: Boolean(podId) && isCustomPod,
+  } as Parameters<typeof usePendingInvitesQuery>[2]);
 
   const swapMutation = useSwapPodPayoutsMutation(podId, {
     onSuccess: () => {
@@ -131,6 +157,43 @@ export default function PodDetailsPage() {
       });
     },
   });
+
+  const triggerPayoutMutation = useTriggerPodPayoutMutation(podId, {
+    onSuccess: (data) => {
+      toast.success("Payout initiated", {
+        description: `Payout ${data.payoutId} has been triggered with status: ${data.status}`,
+      });
+      setConfirmPayoutOpen(false);
+      setMemberToTrigger(null);
+    },
+    onError: (error) => {
+      toast.error("Failed to trigger payout", {
+        description:
+          error.response?.data?.message ??
+          error.message ??
+          "Unable to trigger payout for this member.",
+      });
+    },
+  });
+
+  const handleOpenTriggerConfirm = (
+    membershipId: string,
+    memberName: string,
+  ) => {
+    setMemberToTrigger({ id: membershipId, name: memberName });
+    setConfirmPayoutOpen(true);
+  };
+
+  const handleConfirmTriggerPayout = () => {
+    if (memberToTrigger) {
+      triggerPayoutMutation.mutate({ membershipId: memberToTrigger.id });
+    }
+  };
+
+  const handleCancelTriggerPayout = () => {
+    setConfirmPayoutOpen(false);
+    setMemberToTrigger(null);
+  };
 
   const handleMemberSelect = (membershipId: string) => {
     setSelectedMembers((prev) => {
@@ -153,8 +216,8 @@ export default function PodDetailsPage() {
     }
   };
 
-  const isCustomPod = pod?.type.toLowerCase() === "custom";
   const canShowSwapButton = isCustomPod && selectedMembers.length === 2;
+  const pendingInvites = pendingInvitesData?.items ?? [];
 
   return (
     <section className="space-y-6">
@@ -337,18 +400,37 @@ export default function PodDetailsPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 text-sm">
-                        <div className="font-medium text-[#111827]">
-                          Position:{" "}
-                          {membership.finalOrder
-                            ? `#${membership.finalOrder}`
-                            : membership.joinOrder !== null
-                              ? `#${membership.joinOrder}`
-                              : "—"}
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end gap-1 text-sm">
+                          <div className="font-medium text-[#111827]">
+                            Position:{" "}
+                            {membership.finalOrder
+                              ? `#${membership.finalOrder}`
+                              : membership.joinOrder !== null
+                                ? `#${membership.joinOrder}`
+                                : "—"}
+                          </div>
+                          <div className="text-xs text-[#6B7280]">
+                            Payout: {formatDateTime(membership.payoutDate)}
+                          </div>
                         </div>
-                        <div className="text-xs text-[#6B7280]">
-                          Payout: {formatDateTime(membership.payoutDate)}
-                        </div>
+                        {membershipId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenTriggerConfirm(
+                                membershipId,
+                                displayName,
+                              );
+                            }}
+                            disabled={triggerPayoutMutation.isPending}
+                            className="whitespace-nowrap"
+                          >
+                            Trigger Payout
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -356,8 +438,106 @@ export default function PodDetailsPage() {
               </div>
             )}
           </div>
+
+          {isCustomPod && (
+            <div className="space-y-4 rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+              <div>
+                <h2 className="text-base font-semibold text-[#111827]">
+                  Pending Invites
+                </h2>
+                <p className="text-xs text-[#6B7280]">
+                  Members who have been invited but haven't joined yet.
+                </p>
+              </div>
+
+              {isPendingInvitesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading pending invites…
+                </div>
+              ) : isPendingInvitesError ? (
+                <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {pendingInvitesError?.response?.data?.message ??
+                    pendingInvitesError?.message ??
+                    "Unable to load pending invites."}
+                </div>
+              ) : pendingInvites.length === 0 ? (
+                <EmptyState
+                  title="No pending invites"
+                  description="There are currently no pending invitations for this pod."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {pendingInvites.map((invite, index) => (
+                    <div
+                      key={invite.id ?? index}
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                          <Mail className="h-5 w-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-[#111827]">
+                            {invite.email}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-[#6B7280]">
+                            <span>Invited by: {invite.invitedBy}</span>
+                            {invite.podPlanCode && (
+                              <>
+                                <span>•</span>
+                                <span>Plan: {invite.podPlanCode}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                        Pending
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
+
+      <Dialog open={confirmPayoutOpen} onOpenChange={setConfirmPayoutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Payout Trigger</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to trigger a payout for{" "}
+              <span className="font-semibold">{memberToTrigger?.name}</span>?
+              This action will initiate the payout process and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelTriggerPayout}
+              disabled={triggerPayoutMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmTriggerPayout}
+              disabled={triggerPayoutMutation.isPending}
+            >
+              {triggerPayoutMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Triggering...
+                </>
+              ) : (
+                "Confirm Trigger"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

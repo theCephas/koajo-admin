@@ -741,11 +741,23 @@ export const deletePodPlan = async (planId: string) => {
 
 export interface PayoutSummary {
   id: string;
-  amount: string;
-  currency: string;
-  status: string;
+  membershipId: string;
   podId: string;
   podPlanCode: string;
+  podName: string | null;
+  userFirstName: string | null;
+  userLastName: string | null;
+  userEmail: string;
+  bankName: string | null;
+  bankAccountLast4: string | null;
+  payoutPosition: number;
+  payoutDate: string;
+  totalPayout: string;
+  amount: string;
+  fee: string;
+  currency: string;
+  status: string;
+  stripeReference: string;
   description: string;
   recordedAt: string;
 }

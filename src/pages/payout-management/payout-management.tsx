@@ -46,6 +46,15 @@ const getStatusColor = (status: string) => {
   if (normalized === "paid") {
     return "bg-emerald-50 text-emerald-600";
   }
+  if (normalized === "scheduled") {
+    return "bg-blue-50 text-blue-600";
+  }
+  if (normalized === "pending") {
+    return "bg-amber-50 text-amber-700";
+  }
+  if (normalized === "failed") {
+    return "bg-rose-50 text-rose-600";
+  }
   // Default - gray
   return "bg-gray-50 text-gray-600";
 };
@@ -113,31 +122,57 @@ export default function PayoutManagementPage() {
   const columns = useMemo<Column<PayoutSummary>[]>(
     () => [
       {
-        key: "id",
-        label: "ID",
-        width: 100,
-        render: (value: string) => (
-          <span className="text-sm font-mono text-[#6B7280]">
-            {value.substring(0, 8)}...
-          </span>
-        ),
-      },
-      {
         key: "podPlanCode",
         label: "POD PLAN",
-        width: 140,
+        width: 120,
         render: (value: string) => (
           <span className="text-sm font-semibold text-[#111827]">{value}</span>
         ),
       },
       {
-        key: "podId",
-        label: "POD ID",
-        width: 100,
-        render: (value: string) => (
-          <span className="text-sm font-mono text-[#6B7280]">
-            {value.substring(0, 8)}...
-          </span>
+        key: "userEmail",
+        label: "USER",
+        width: 200,
+        render: (_, payout) => (
+          <div className="flex flex-col">
+            {payout.userFirstName || payout.userLastName ? (
+              <>
+                <span className="text-sm font-medium text-[#111827]">
+                  {[payout.userFirstName, payout.userLastName]
+                    .filter(Boolean)
+                    .join(" ")}
+                </span>
+                <span className="text-xs text-[#6B7280]">
+                  {payout.userEmail}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-[#374151]">{payout.userEmail}</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "bankName",
+        label: "BANK DETAILS",
+        width: 180,
+        render: (_, payout) => (
+          <div className="flex flex-col">
+            {payout.bankName ? (
+              <>
+                <span className="text-sm font-medium text-[#111827]">
+                  {payout.bankName}
+                </span>
+                {payout.bankAccountLast4 && (
+                  <span className="text-xs text-[#6B7280]">
+                    ****{payout.bankAccountLast4}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-[#6B7280]">—</span>
+            )}
+          </div>
         ),
       },
       {
@@ -147,16 +182,6 @@ export default function PayoutManagementPage() {
         render: (value: string) => (
           <span className="text-sm text-[#374151]">
             {formatCurrency(value)}
-          </span>
-        ),
-      },
-      {
-        key: "currency",
-        label: "CURRENCY",
-        width: 100,
-        render: (value: string) => (
-          <span className="text-sm font-medium text-[#374151]">
-            {value.toUpperCase()}
           </span>
         ),
       },
@@ -173,9 +198,9 @@ export default function PayoutManagementPage() {
         ),
       },
       {
-        key: "recordedAt",
+        key: "payoutDate",
         label: "PAYOUT DATE",
-        width: 200,
+        width: 180,
         render: (value: string) => (
           <span className="text-sm text-[#6B7280]">{formatDate(value)}</span>
         ),

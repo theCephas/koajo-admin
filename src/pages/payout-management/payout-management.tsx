@@ -46,6 +46,15 @@ const getStatusColor = (status: string) => {
   if (normalized === "paid") {
     return "bg-emerald-50 text-emerald-600";
   }
+  if (normalized === "scheduled") {
+    return "bg-blue-50 text-blue-600";
+  }
+  if (normalized === "pending") {
+    return "bg-amber-50 text-amber-700";
+  }
+  if (normalized === "failed") {
+    return "bg-rose-50 text-rose-600";
+  }
   // Default - gray
   return "bg-gray-50 text-gray-600";
 };
@@ -115,15 +124,61 @@ export default function PayoutManagementPage() {
       {
         key: "podPlanCode",
         label: "POD PLAN",
-        width: 140,
+        width: 120,
         render: (value: string) => (
           <span className="text-sm font-semibold text-[#111827]">{value}</span>
         ),
       },
       {
+        key: "userEmail",
+        label: "USER",
+        width: 200,
+        render: (_, payout) => (
+          <div className="flex flex-col">
+            {payout.userFirstName || payout.userLastName ? (
+              <>
+                <span className="text-sm font-medium text-[#111827]">
+                  {[payout.userFirstName, payout.userLastName]
+                    .filter(Boolean)
+                    .join(" ")}
+                </span>
+                <span className="text-xs text-[#6B7280]">
+                  {payout.userEmail}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-[#374151]">{payout.userEmail}</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "bankName",
+        label: "BANK DETAILS",
+        width: 180,
+        render: (_, payout) => (
+          <div className="flex flex-col">
+            {payout.bankName ? (
+              <>
+                <span className="text-sm font-medium text-[#111827]">
+                  {payout.bankName}
+                </span>
+                {payout.bankAccountLast4 && (
+                  <span className="text-xs text-[#6B7280]">
+                    ****{payout.bankAccountLast4}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-[#6B7280]">—</span>
+            )}
+          </div>
+        ),
+      },
+      {
         key: "amount",
         label: "AMOUNT",
-        width: 140,
+        width: 120,
         render: (value: string) => (
           <span className="text-sm text-[#374151]">
             {formatCurrency(value)}
@@ -143,9 +198,9 @@ export default function PayoutManagementPage() {
         ),
       },
       {
-        key: "recordedAt",
-        label: "RECORDED AT",
-        width: 200,
+        key: "payoutDate",
+        label: "PAYOUT DATE",
+        width: 180,
         render: (value: string) => (
           <span className="text-sm text-[#6B7280]">{formatDate(value)}</span>
         ),

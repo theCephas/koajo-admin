@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { LoginResponse } from "@/services/api";
+import type { LoginResponse, AdminProfile } from "@/services/api";
 
 interface AuthState {
   accessToken: string | null;
@@ -12,7 +12,9 @@ interface AuthState {
   isSuperAdmin: boolean;
   rememberMe: boolean;
   isAuthenticated: boolean;
+  profile: AdminProfile | null;
   setAuth: (payload: LoginResponse, options?: { rememberMe?: boolean }) => void;
+  setProfile: (profile: AdminProfile) => void;
   updateTokens: (tokens: {
     accessToken: string;
     tokenType?: string;
@@ -24,7 +26,7 @@ interface AuthState {
 
 const initialState: Omit<
   AuthState,
-  "setAuth" | "updateTokens" | "signOut" | "isAuthenticated"
+  "setAuth" | "setProfile" | "updateTokens" | "signOut" | "isAuthenticated"
 > = {
   accessToken: null,
   tokenType: null,
@@ -33,6 +35,7 @@ const initialState: Omit<
   role: null,
   isSuperAdmin: false,
   rememberMe: false,
+  profile: null,
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -50,6 +53,11 @@ export const useAuthStore = create<AuthState>()(
           isSuperAdmin: payload.isSuperAdmin,
           rememberMe: options?.rememberMe ?? false,
           isAuthenticated: true,
+          profile: null,
+        })),
+      setProfile: (profile) =>
+        set(() => ({
+          profile,
         })),
       updateTokens: ({ accessToken, tokenType, expiresAt, refreshToken }) =>
         set((state) => ({
@@ -80,6 +88,7 @@ export const useAuthStore = create<AuthState>()(
               role: state.role,
               isSuperAdmin: state.isSuperAdmin,
               isAuthenticated: state.isAuthenticated,
+              profile: state.profile,
             }
           : {
               accessToken: null,
@@ -89,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
               role: null,
               isSuperAdmin: false,
               isAuthenticated: false,
+              profile: null,
             }),
       }),
     },

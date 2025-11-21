@@ -41,8 +41,22 @@ export default function Profile() {
   const navigate = useNavigate();
   const [tab, setTab] = React.useState<TabKey>("profile");
   const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin);
+  const profile = useAuthStore((state) => state.profile);
+  const setProfile = useAuthStore((state) => state.setProfile);
 
-  const { data: profile, isLoading: isLoadingProfile } = useAdminProfileQuery();
+  const { data: profileData, isLoading: isLoadingProfile } =
+    useAdminProfileQuery(
+      {
+        enabled: !profile,
+      } as Parameters<typeof useAdminProfileQuery>[0],
+    );
+
+  // Update global store when profile is fetched
+  React.useEffect(() => {
+    if (profileData && !profile) {
+      setProfile(profileData);
+    }
+  }, [profileData, profile, setProfile]);
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),

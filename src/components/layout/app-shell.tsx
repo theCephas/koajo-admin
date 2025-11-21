@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getAdminProfile } from "@/services/api";
 
 const navigation = [
   { label: "Dashboard", to: "/", icon: HiOutlineViewGrid },
@@ -87,7 +88,25 @@ const navigation = [
 export function AppShell() {
   const navigate = useNavigate();
   const signOut = useAuthStore((state) => state.signOut);
+  const profile = useAuthStore((state) => state.profile);
+  const setProfile = useAuthStore((state) => state.setProfile);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  // Fetch admin profile on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileData = await getAdminProfile();
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Failed to fetch admin profile:", error);
+      }
+    };
+
+    if (!profile) {
+      void fetchProfile();
+    }
+  }, [profile, setProfile]);
 
   const handleLogoutClick = () => {
     setLogoutDialogOpen(true);
@@ -179,7 +198,9 @@ export function AppShell() {
               <div className="flex items-center gap-2 cursor-pointer">
                 <img src={Avatar} alt="User Avatar" />
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">admin@koajo.com</p>
+                  <p className="text-sm font-medium">
+                    {profile?.email ?? "admin@koajo.com"}
+                  </p>
                   <ChevronDown className="h-3 w-3 text-gray-500" />
                 </div>
               </div>

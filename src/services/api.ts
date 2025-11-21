@@ -78,7 +78,7 @@ export interface AdminProfile {
 }
 
 export const getAdminProfile = async () => {
-  const { data } = await apiClient.get<AdminProfile>("/admin/auth/me");
+  const { data } = await apiClient.get<AdminProfile>("/auth/me");
   return data;
 };
 

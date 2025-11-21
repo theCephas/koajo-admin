@@ -70,18 +70,13 @@ export default function Profile() {
   // Populate form when profile data is loaded
   React.useEffect(() => {
     if (profile) {
-      const phoneValue =
-        typeof profile.phoneNumber === "string"
-          ? profile.phoneNumber
-          : profile.phoneNumber && typeof profile.phoneNumber === "object"
-            ? ""
-            : "";
+      const phoneValue = profile.phoneNumber ?? "";
 
       profileForm.reset({
-        firstName: profile.firstname || "",
-        lastName: "", // API doesn't return lastName, keep empty
-        username: profile.username || "",
-        email: profile.email || "",
+        firstName: profile.firstName ?? "",
+        lastName: profile.lastName ?? "",
+        username: profile.email ?? "", // Use email as username since API doesn't have separate username
+        email: profile.email ?? "",
         phone: phoneValue,
       });
     }

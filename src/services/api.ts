@@ -54,17 +54,27 @@ export interface AdminPermission {
 export interface AdminProfile {
   id: string;
   email: string;
-  firstname: string;
-  username: string;
-  phoneNumber: Record<string, unknown>;
+  firstName: string | null;
+  lastName: string | null;
+  phoneNumber: string | null;
   role: string;
+  isActive: boolean;
   isSuperAdmin: boolean;
   requiresPasswordChange: boolean;
-  updatedAt: Record<string, unknown>;
-  invitedAt: Record<string, unknown>;
-  lastLoginAt: Record<string, unknown>;
-  roles: AdminRole[];
-  permissions: AdminPermission[];
+  createdAt: string;
+  updatedAt: string;
+  invitedAt: string | null;
+  invitedById: string | null;
+  lastLoginAt: string | null;
+  roles: {
+    id: string;
+    name: string;
+    description: string;
+    permissions: AdminPermission[];
+  }[];
+  explicitPermissions: AdminPermission[];
+  deniedPermissions: AdminPermission[];
+  effectivePermissions: string[];
 }
 
 export const getAdminProfile = async () => {

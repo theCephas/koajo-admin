@@ -45,11 +45,9 @@ export default function Profile() {
   const setProfile = useAuthStore((state) => state.setProfile);
 
   const { data: profileData, isLoading: isLoadingProfile } =
-    useAdminProfileQuery(
-      {
-        enabled: !profile,
-      } as Parameters<typeof useAdminProfileQuery>[0],
-    );
+    useAdminProfileQuery({
+      enabled: !profile,
+    } as Parameters<typeof useAdminProfileQuery>[0]);
 
   // Update global store when profile is fetched
   React.useEffect(() => {
@@ -72,16 +70,23 @@ export default function Profile() {
   // Populate form when profile data is loaded
   React.useEffect(() => {
     if (profile) {
+      const phoneValue =
+        typeof profile.phoneNumber === "string"
+          ? profile.phoneNumber
+          : profile.phoneNumber && typeof profile.phoneNumber === "object"
+            ? ""
+            : "";
+
       profileForm.reset({
         firstName: profile.firstname || "",
         lastName: "", // API doesn't return lastName, keep empty
         username: profile.username || "",
         email: profile.email || "",
-        phone:
-          typeof profile.phoneNumber === "string" ? profile.phoneNumber : "",
+        phone: phoneValue,
       });
     }
-  }, [profile, profileForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -148,7 +153,7 @@ export default function Profile() {
 
         {/* Content */}
         {tab === "profile" ? (
-          isLoadingProfile ? (
+          isLoadingProfile && !profile ? (
             <div className="flex items-center justify-center gap-2 p-8 text-sm text-[#6B7280]">
               <Loader2 className="h-5 w-5 animate-spin" />
               Loading profile…

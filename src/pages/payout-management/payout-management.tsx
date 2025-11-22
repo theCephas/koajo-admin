@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
@@ -11,6 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   usePayoutsQuery,
   useMarkPayoutAsPaidMutation,
@@ -88,6 +102,10 @@ export default function PayoutManagementPage() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [selectedPayout, setSelectedPayout] = useState<PayoutSummary | null>(
+    null,
+  );
 
   const queryParams = useMemo(
     () => ({
@@ -107,24 +125,30 @@ export default function PayoutManagementPage() {
   const totalCount = data?.total ?? 0;
   const payouts = data?.items ?? [];
 
-  const handleMarkAsPaid = React.useCallback(
-    async (payout: PayoutSummary) => {
-      try {
-        await markAsPaidMutation.mutateAsync({
-          podId: payout.podId,
-          payload: {
-            membershipId: payout.membershipId,
-            amount: parseFloat(payout.amount),
-            description: {},
-          },
-        });
-        toast.success("Payout marked as paid successfully");
-      } catch {
-        toast.error("Failed to mark payout as paid");
-      }
-    },
-    [markAsPaidMutation],
-  );
+  const handleMarkAsPaidClick = React.useCallback((payout: PayoutSummary) => {
+    setSelectedPayout(payout);
+    setConfirmDialogOpen(true);
+  }, []);
+
+  const handleConfirmMarkAsPaid = async () => {
+    if (!selectedPayout) return;
+
+    try {
+      await markAsPaidMutation.mutateAsync({
+        podId: selectedPayout.podId,
+        payload: {
+          membershipId: selectedPayout.membershipId,
+          amount: parseFloat(selectedPayout.amount),
+          description: {},
+        },
+      });
+      toast.success("Payout marked as paid successfully");
+      setConfirmDialogOpen(false);
+      setSelectedPayout(null);
+    } catch {
+      toast.error("Failed to mark payout as paid");
+    }
+  };
 
   useEffect(() => {
     if (!data) return;
@@ -238,7 +262,7 @@ export default function PayoutManagementPage() {
       {
         key: "actions",
         label: "ACTIONS",
-        width: 140,
+        width: 80,
         render: (_, payout) => {
           const isScheduled = payout.status.toLowerCase() === "scheduled";
 
@@ -247,25 +271,32 @@ export default function PayoutManagementPage() {
           }
 
           return (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
-              onClick={() => void handleMarkAsPaid(payout)}
-              disabled={markAsPaidMutation.isPending}
-            >
-              {markAsPaidMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              )}
-              Mark as Paid
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  aria-label="Actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleMarkAsPaidClick(payout)}
+                  className="cursor-pointer"
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Mark as Paid
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           );
         },
       },
     ],
-    [handleMarkAsPaid, markAsPaidMutation.isPending],
+    [handleMarkAsPaidClick],
   );
 
   return (
@@ -353,6 +384,68 @@ export default function PayoutManagementPage() {
         }
         className="mt-2"
       />
+
+      {/* Confirm Mark as Paid Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Mark as Paid</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this payout as paid?
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPayout && (
+            <div className="space-y-2 py-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B7280]">User:</span>
+                <span className="font-medium text-[#111827]">
+                  {selectedPayout.userFirstName || selectedPayout.userLastName
+                    ? `${selectedPayout.userFirstName ?? ""} ${selectedPayout.userLastName ?? ""}`.trim()
+                    : selectedPayout.userEmail}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B7280]">Amount:</span>
+                <span className="font-medium text-[#111827]">
+                  {formatCurrency(selectedPayout.amount)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#6B7280]">Pod Plan:</span>
+                <span className="font-medium text-[#111827]">
+                  {selectedPayout.podPlanCode}
+                </span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialogOpen(false)}
+              disabled={markAsPaidMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleConfirmMarkAsPaid()}
+              disabled={markAsPaidMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {markAsPaidMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Marking as Paid...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Mark as Paid
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

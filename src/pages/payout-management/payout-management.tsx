@@ -115,7 +115,7 @@ export default function PayoutManagementPage() {
           payload: {
             membershipId: payout.membershipId,
             amount: parseFloat(payout.amount),
-            payoutPosition: payout.payoutPosition,
+            description: {},
           },
         });
         toast.success("Payout marked as paid successfully");

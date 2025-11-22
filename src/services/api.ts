@@ -805,7 +805,7 @@ export const getPayouts = async ({
 export interface MarkPayoutAsPaidPayload {
   membershipId: string;
   amount: number;
-  payoutPosition: number;
+  description: Record<string, unknown>;
 }
 
 export interface MarkPayoutAsPaidResponse {

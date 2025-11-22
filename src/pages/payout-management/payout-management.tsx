@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 import DataTable, { type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import {
   usePayoutsQuery,
+  useMarkPayoutAsPaidMutation,
   type PayoutsQueryError,
 } from "@/hooks/queries/use-payouts";
 import type { PayoutSummary } from "@/services/api";
@@ -100,8 +102,29 @@ export default function PayoutManagementPage() {
   const { data, isLoading, isFetching, isError, error, refetch } =
     usePayoutsQuery(queryParams);
 
+  const markAsPaidMutation = useMarkPayoutAsPaidMutation();
+
   const totalCount = data?.total ?? 0;
   const payouts = data?.items ?? [];
+
+  const handleMarkAsPaid = React.useCallback(
+    async (payout: PayoutSummary) => {
+      try {
+        await markAsPaidMutation.mutateAsync({
+          podId: payout.podId,
+          payload: {
+            membershipId: payout.membershipId,
+            amount: parseFloat(payout.amount),
+            payoutPosition: payout.payoutPosition,
+          },
+        });
+        toast.success("Payout marked as paid successfully");
+      } catch {
+        toast.error("Failed to mark payout as paid");
+      }
+    },
+    [markAsPaidMutation],
+  );
 
   useEffect(() => {
     if (!data) return;
@@ -212,8 +235,37 @@ export default function PayoutManagementPage() {
           <span className="text-sm text-[#6B7280]">{value || "—"}</span>
         ),
       },
+      {
+        key: "actions",
+        label: "ACTIONS",
+        width: 140,
+        render: (_, payout) => {
+          const isScheduled = payout.status.toLowerCase() === "scheduled";
+
+          if (!isScheduled) {
+            return null;
+          }
+
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+              onClick={() => void handleMarkAsPaid(payout)}
+              disabled={markAsPaidMutation.isPending}
+            >
+              {markAsPaidMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              Mark as Paid
+            </Button>
+          );
+        },
+      },
     ],
-    [],
+    [handleMarkAsPaid, markAsPaidMutation.isPending],
   );
 
   return (

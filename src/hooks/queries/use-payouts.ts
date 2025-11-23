@@ -9,10 +9,13 @@ import type { AxiosError } from "axios";
 import {
   getPayouts,
   markPayoutAsPaid,
+  updatePayoutStatus,
   type PayoutsQueryParams,
   type PayoutsResponse,
   type MarkPayoutAsPaidPayload,
   type MarkPayoutAsPaidResponse,
+  type UpdatePayoutStatusPayload,
+  type UpdatePayoutStatusResponse,
 } from "@/services/api";
 
 export type PayoutsQueryError = AxiosError<{ message?: string }>;
@@ -66,6 +69,30 @@ export const useMarkPayoutAsPaidMutation = () => {
     MarkPayoutAsPaidVariables
   >({
     mutationFn: ({ podId, payload }) => markPayoutAsPaid(podId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PAYOUTS_QUERY_KEY });
+    },
+  });
+};
+
+export type UpdatePayoutStatusError = AxiosError<{ message?: string }>;
+
+export interface UpdatePayoutStatusVariables {
+  podId: string;
+  payoutId: string;
+  payload: UpdatePayoutStatusPayload;
+}
+
+export const useUpdatePayoutStatusMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    UpdatePayoutStatusResponse,
+    UpdatePayoutStatusError,
+    UpdatePayoutStatusVariables
+  >({
+    mutationFn: ({ podId, payoutId, payload }) =>
+      updatePayoutStatus(podId, payoutId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PAYOUTS_QUERY_KEY });
     },

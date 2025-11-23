@@ -802,6 +802,53 @@ export const getPayouts = async ({
   return data;
 };
 
+export interface MarkPayoutAsPaidPayload {
+  membershipId: string;
+  amount: number;
+  description: string;
+}
+
+export interface MarkPayoutAsPaidResponse {
+  membershipId: string;
+  podId: string;
+  payoutAmount: string;
+  payoutDate: string;
+  payoutStatus: string;
+}
+
+export const markPayoutAsPaid = async (
+  podId: string,
+  payload: MarkPayoutAsPaidPayload,
+) => {
+  const { data } = await apiClient.post<MarkPayoutAsPaidResponse>(
+    `/pods/${podId}/payouts`,
+    payload,
+  );
+  return data;
+};
+
+export interface UpdatePayoutStatusPayload {
+  status: string;
+  customStatus?: Record<string, unknown>;
+}
+
+export interface UpdatePayoutStatusResponse {
+  payoutId: string;
+  status: string;
+}
+
+export const updatePayoutStatus = async (
+  podId: string,
+  payoutId: string,
+  payload: UpdatePayoutStatusPayload,
+) => {
+  const { data } = await apiClient.patch<UpdatePayoutStatusResponse>(
+    `/pods/${podId}/payouts/${payoutId}/status`,
+    payload,
+  );
+  return data;
+};
+
 export interface PermissionDefinition {
   id: string;
   code: string;

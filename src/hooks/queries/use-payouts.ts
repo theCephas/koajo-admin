@@ -1,10 +1,21 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 
 import {
   getPayouts,
+  markPayoutAsPaid,
+  updatePayoutStatus,
   type PayoutsQueryParams,
   type PayoutsResponse,
+  type MarkPayoutAsPaidPayload,
+  type MarkPayoutAsPaidResponse,
+  type UpdatePayoutStatusPayload,
+  type UpdatePayoutStatusResponse,
 } from "@/services/api";
 
 export type PayoutsQueryError = AxiosError<{ message?: string }>;
@@ -41,3 +52,49 @@ export const usePayoutsQuery = (
     queryFn: () => getPayouts(params),
     ...options,
   });
+
+export type MarkPayoutAsPaidError = AxiosError<{ message?: string }>;
+
+export interface MarkPayoutAsPaidVariables {
+  podId: string;
+  payload: MarkPayoutAsPaidPayload;
+}
+
+export const useMarkPayoutAsPaidMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    MarkPayoutAsPaidResponse,
+    MarkPayoutAsPaidError,
+    MarkPayoutAsPaidVariables
+  >({
+    mutationFn: ({ podId, payload }) => markPayoutAsPaid(podId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PAYOUTS_QUERY_KEY });
+    },
+  });
+};
+
+export type UpdatePayoutStatusError = AxiosError<{ message?: string }>;
+
+export interface UpdatePayoutStatusVariables {
+  podId: string;
+  payoutId: string;
+  payload: UpdatePayoutStatusPayload;
+}
+
+export const useUpdatePayoutStatusMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    UpdatePayoutStatusResponse,
+    UpdatePayoutStatusError,
+    UpdatePayoutStatusVariables
+  >({
+    mutationFn: ({ podId, payoutId, payload }) =>
+      updatePayoutStatus(podId, payoutId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PAYOUTS_QUERY_KEY });
+    },
+  });
+};

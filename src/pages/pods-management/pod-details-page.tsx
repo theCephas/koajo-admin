@@ -161,7 +161,7 @@ export default function PodDetailsPage() {
   const triggerPayoutMutation = useTriggerPodPayoutMutation(podId, {
     onSuccess: (data) => {
       toast.success("Payout initiated", {
-        description: `Payout ${data.payoutId} has been triggered with status: ${data.status}`,
+        description: `Payout of ${data.payoutAmount} scheduled for ${data.payoutDate}.`,
       });
       setConfirmPayoutOpen(false);
       setMemberToTrigger(null);
@@ -185,8 +185,12 @@ export default function PodDetailsPage() {
   };
 
   const handleConfirmTriggerPayout = () => {
-    if (memberToTrigger) {
-      triggerPayoutMutation.mutate({ membershipId: memberToTrigger.id });
+    if (memberToTrigger && pod) {
+      triggerPayoutMutation.mutate({
+        membershipId: memberToTrigger.id,
+        amount: pod.amount,
+        description: `Triggered payout for ${memberToTrigger.name}`,
+      });
     }
   };
 

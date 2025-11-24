@@ -655,13 +655,15 @@ export const swapPodPayouts = async (
 
 export interface TriggerPayoutPayload {
   membershipId: string;
+  amount: number;
+  description: string;
 }
 
 export interface TriggerPayoutResponse {
-  payoutId: string;
-  status: string;
-  stripeReference: string;
-  fee: string;
+  membershipId: string;
+  podId: string;
+  payoutAmount: string;
+  payoutDate: string;
 }
 
 export const triggerPodPayout = async (
@@ -669,7 +671,7 @@ export const triggerPodPayout = async (
   payload: TriggerPayoutPayload,
 ) => {
   const { data } = await apiClient.post<TriggerPayoutResponse>(
-    `/pods/${podId}/payouts/trigger`,
+    `/pods/${podId}/payouts`,
     payload,
   );
   return data;
